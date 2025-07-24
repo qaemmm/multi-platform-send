@@ -5,7 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Save, Eye, FileText, Loader2, Copy, Chrome, ArrowLeft } from 'lucide-react';
+import { Save, FileText, Loader2, Copy, Chrome, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { countWords, calculateReadingTime } from '@/lib/utils';
 
@@ -176,19 +176,7 @@ ${content}`;
               <option value="minimal">简约风格</option>
             </select>
             
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handlePreview}
-              disabled={isConverting}
-            >
-              {isConverting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Eye className="h-4 w-4" />
-              )}
-              预览
-            </Button>
+
             
             <Button
               variant="outline"
@@ -262,24 +250,106 @@ console.log('代码示例');
         {/* 预览区 */}
         <div className="w-1/2 flex flex-col">
           <div className="p-4 border-b bg-gray-50">
-            <h3 className="font-medium text-gray-700">公众号预览</h3>
+            <h3 className="font-medium text-gray-700">公众号预览（手机视图）</h3>
           </div>
-          
-          <div className="flex-1 p-4 overflow-auto bg-gray-50">
-            <Card className="max-w-none">
-              <CardHeader>
-                <CardTitle className="text-lg">{title || '未命名文章'}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {preview ? (
-                  <div dangerouslySetInnerHTML={{ __html: preview }} />
-                ) : (
-                  <div className="text-gray-500 text-center py-8">
-                    {content ? '转换中...' : '开始输入内容以查看预览'}
+
+          <div className="flex-1 p-6 overflow-auto bg-gradient-to-br from-gray-50 to-gray-100 flex justify-center items-center">
+            {/* iPhone 样机 */}
+            <div className="relative">
+              {/* 手机外壳 - iPhone 14 Pro 样式 */}
+              <div className="w-[390px] h-[844px] bg-black rounded-[60px] p-2 shadow-2xl">
+                {/* 屏幕 */}
+                <div className="w-full h-full bg-white rounded-[48px] overflow-hidden flex flex-col relative">
+                  {/* 动态岛 */}
+                  <div className="absolute top-2 left-1/2 transform -translate-x-1/2 w-32 h-8 bg-black rounded-full z-10"></div>
+
+                  {/* 状态栏 */}
+                  <div className="h-12 bg-white flex items-center justify-between px-6 pt-4">
+                    <div className="text-sm font-semibold text-black">9:41</div>
+                    <div className="flex items-center space-x-1">
+                      {/* 信号 */}
+                      <div className="flex space-x-1">
+                        <div className="w-1 h-3 bg-black rounded-full"></div>
+                        <div className="w-1 h-4 bg-black rounded-full"></div>
+                        <div className="w-1 h-5 bg-black rounded-full"></div>
+                        <div className="w-1 h-6 bg-black rounded-full"></div>
+                      </div>
+                      {/* WiFi */}
+                      <svg className="w-4 h-4 text-black" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M2.166 4.999c5.208-5.208 13.651-5.208 18.859 0a.833.833 0 1 1-1.178 1.178c-4.375-4.375-11.471-4.375-15.846 0a.833.833 0 0 1-1.178-1.178z"/>
+                        <path d="M5.01 7.844c3.125-3.125 8.195-3.125 11.32 0a.833.833 0 1 1-1.178 1.178c-2.292-2.292-6.014-2.292-8.306 0a.833.833 0 0 1-1.178-1.178z"/>
+                        <path d="M7.854 10.688c1.042-1.042 2.734-1.042 3.776 0a.833.833 0 1 1-1.178 1.178.833.833 0 0 0-1.178 0 .833.833 0 0 1-1.178-1.178z"/>
+                        <circle cx="10" cy="15" r="1.5"/>
+                      </svg>
+                      {/* 电池 */}
+                      <div className="flex items-center">
+                        <div className="w-6 h-3 border border-black rounded-sm relative">
+                          <div className="w-4 h-1.5 bg-green-500 rounded-sm absolute top-0.5 left-0.5"></div>
+                        </div>
+                        <div className="w-0.5 h-1.5 bg-black rounded-r-sm ml-0.5"></div>
+                      </div>
+                    </div>
                   </div>
-                )}
-              </CardContent>
-            </Card>
+
+                  {/* 微信公众号头部 */}
+                  <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-green-500 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-sm">
+                      字
+                    </div>
+                    <div className="ml-3 flex-1">
+                      <div className="text-base font-medium text-gray-900 truncate">
+                        {title || '字流'}
+                      </div>
+                      <div className="text-xs text-gray-500">刚刚</div>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h.01M12 12h.01M19 12h.01" />
+                      </svg>
+                    </div>
+                  </div>
+
+                  {/* 文章内容区域 */}
+                  <div className="flex-1 overflow-auto bg-white">
+                    <div className="px-4 py-4">
+                      {preview ? (
+                        <div
+                          className="prose prose-sm max-w-none text-gray-800 leading-relaxed"
+                          style={{
+                            fontSize: '16px',
+                            lineHeight: '1.7',
+                            color: '#333'
+                          }}
+                          dangerouslySetInnerHTML={{ __html: preview }}
+                        />
+                      ) : (
+                        <div className="text-gray-400 text-center py-16 text-sm">
+                          {content ? (
+                            <div className="flex items-center justify-center space-x-2">
+                              <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                              <span>转换中...</span>
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              <div className="text-gray-300 text-lg">📝</div>
+                              <div>开始输入内容以查看预览</div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 底部安全区域 */}
+                  <div className="h-8 bg-white"></div>
+                </div>
+              </div>
+
+              {/* 手机标签 */}
+              <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xs text-gray-500 font-medium">
+                iPhone 14 Pro 预览
+              </div>
+            </div>
           </div>
         </div>
       </div>
