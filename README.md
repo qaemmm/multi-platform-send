@@ -1,55 +1,70 @@
-# 字流（ZiLiu）
-
-> 让文字如流水般顺畅地流向每个平台
+# 字流 MVP - 让文字如流水般顺畅发布
 
 字流是一款AI驱动的多平台内容发布工具，帮助创作者一次创作，智能适配公众号、知乎、掘金、小红书等平台的格式要求。
 
-## ✨ 核心特性
+## 🚀 MVP功能特性
 
-- 🚀 **一键多平台发布** - 3分钟完成全平台发布
-- 🎨 **AI智能排版** - 自动匹配各平台最佳样式
-- 📚 **精选推荐自动化** - 告别手动添加文章链接
-- 💄 **小红书风格改写** - 技术文秒变爆款笔记
-- 🔌 **Chrome插件支持** - 自动填充各平台编辑器
+### ✅ 已实现功能
 
-## 📁 项目结构
+- **用户认证系统**：注册、登录、会话管理
+- **Markdown编辑器**：支持实时预览和自动保存
+- **格式转换**：Markdown转公众号HTML格式
+- **样式模板**：3套内置样式（默认、技术、简约）
+- **Chrome插件**：一键填充公众号内容
+- **响应式设计**：适配桌面和移动端
 
-```
-ziliu/
-├── docs/                 # 文档目录
-│   └── PRD.md           # 产品需求文档
-├── src/                  # 源代码目录
-│   ├── web/             # Web应用
-│   ├── extension/       # Chrome插件
-│   └── server/          # 后端服务
-├── public/              # 静态资源
-└── README.md            # 项目说明
-```
+### 🔄 核心工作流程
 
-## 🚀 快速开始
+1. **创作**：在字流网站使用Markdown编辑器创作内容
+2. **预览**：实时查看公众号格式效果
+3. **复制**：点击"复制到插件"按钮
+4. **发布**：在公众号页面使用Chrome插件一键填充
+
+## 🛠️ 技术栈
+
+- **前端**：Next.js 14 + TypeScript + Tailwind CSS
+- **后端**：Next.js API Routes
+- **数据库**：SQLite (本地) / Turso (生产)
+- **认证**：NextAuth.js
+- **ORM**：Drizzle ORM
+- **部署**：Vercel (零成本)
+
+## 📦 快速开始
+
+### 1. 环境要求
+
+- Node.js 18+
+- npm 或 yarn
+
+### 2. 安装依赖
 
 ```bash
-# 克隆项目
-git clone https://github.com/yourusername/ziliu.git
-cd ziliu
-
-# 安装依赖
 npm install
+```
 
-# 启动开发服务器
+### 3. 环境配置
+
+复制 `.env.local` 文件并配置：
+
+```bash
+# 数据库配置 (开发环境使用本地SQLite)
+DATABASE_URL="file:./dev.db"
+
+# NextAuth 配置
+NEXTAUTH_SECRET="your-super-secret-key"
+NEXTAUTH_URL="http://localhost:3000"
+```
+
+### 4. 初始化数据库
+
+```bash
+npm run db:push
+```
+
+### 5. 启动开发服务器
+
+```bash
 npm run dev
 ```
 
-## 📖 文档
-
-- [产品需求文档](./docs/PRD.md)
-- [技术架构设计](./docs/architecture.md) (待完成)
-- [API文档](./docs/api.md) (待完成)
-
-## 🤝 贡献
-
-欢迎提交 Issue 和 Pull Request！
-
-## 📄 许可证
-
-MIT License
+访问 http://localhost:3000

@@ -1,44 +1,42 @@
 {
-  "name": "ziliu",
-  "version": "1.0.0",
-  "description": "AI驱动的多平台内容发布工具",
+  "name": "ziliu-mvp",
+  "version": "0.1.0",
   "private": true,
-  "author": "孟健",
-  "license": "MIT",
   "scripts": {
-    "dev": "npm run dev:web",
-    "dev:web": "cd src/web && npm run dev",
-    "dev:server": "cd src/server && npm run dev",
-    "dev:extension": "cd src/extension && npm run dev",
-    "build": "npm run build:web && npm run build:server && npm run build:extension",
-    "build:web": "cd src/web && npm run build",
-    "build:server": "cd src/server && npm run build",
-    "build:extension": "cd src/extension && npm run build",
-    "install:all": "npm install && npm run install:web && npm run install:server && npm run install:extension",
-    "install:web": "cd src/web && npm install",
-    "install:server": "cd src/server && npm install",
-    "install:extension": "cd src/extension && npm install"
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio",
+    "db:push": "drizzle-kit push"
   },
-  "workspaces": [
-    "src/web",
-    "src/server",
-    "src/extension"
-  ],
+  "dependencies": {
+    "@auth/drizzle-adapter": "^1.10.0",
+    "@libsql/client": "^0.15.10",
+    "@paralleldrive/cuid2": "^2.2.2",
+    "autoprefixer": "^10.4.21",
+    "bcryptjs": "^3.0.2",
+    "clsx": "^2.1.1",
+    "drizzle-orm": "^0.44.3",
+    "lucide-react": "^0.525.0",
+    "marked": "^16.1.1",
+    "next": "15.4.3",
+    "next-auth": "^4.24.11",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "tailwind-merge": "^3.3.1",
+    "zod": "^4.0.8"
+  },
   "devDependencies": {
-    "@types/node": "^20.0.0",
-    "typescript": "^5.0.0"
-  },
-  "keywords": [
-    "content-publishing",
-    "multi-platform",
-    "ai",
-    "wechat",
-    "zhihu",
-    "juejin",
-    "xiaohongshu"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/yourusername/ziliu.git"
+    "@tailwindcss/postcss": "^4.1.11",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "drizzle-kit": "^0.31.4",
+    "tailwindcss": "^4",
+    "typescript": "^5"
   }
 }
