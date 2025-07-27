@@ -28,6 +28,7 @@ export function SimpleEditor({
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [isCopying, setIsCopying] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
 
   // 计算统计信息
   const wordCount = countWords(content);
@@ -97,8 +98,21 @@ export function SimpleEditor({
     }
   };
 
-  // 复制到剪贴板供Chrome插件使用
-  const handleCopyForExtension = async () => {
+  // 检查Chrome扩展是否已安装
+  const checkExtensionInstalled = () => {
+    return new Promise((resolve) => {
+      if (typeof chrome !== 'undefined' && chrome.runtime) {
+        chrome.runtime.sendMessage('字流助手扩展ID', { action: 'ping' }, (response) => {
+          resolve(!chrome.runtime.lastError);
+        });
+      } else {
+        resolve(false);
+      }
+    });
+  };
+
+  // 简化的复制功能（备用方案）
+  const handleCopyContent = async () => {
     if (!title.trim() || !content.trim()) {
       alert('请先填写标题和内容');
       return;
@@ -111,33 +125,122 @@ export function SimpleEditor({
 
     setIsCopying(true);
     try {
-      // 创建包含字流数据的特殊格式
-      const extensionData = {
+      // 获取带内联样式的HTML用于公众号编辑器
+      let inlineHtml = preview;
+      try {
+        const response = await fetch('/api/convert-inline', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            content,
+            platform: 'wechat',
+            style: selectedStyle,
+          }),
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          inlineHtml = data.data.inlineHtml;
+        }
+      } catch (error) {
+        console.log('获取内联样式失败，使用预览HTML:', error);
+      }
+
+      // 简化的数据格式
+      const contentData = {
         title: title.trim(),
-        content: preview,
-        platform: 'wechat',
-        style: selectedStyle,
+        content: inlineHtml,
         timestamp: new Date().toISOString(),
       };
 
-      // 创建特殊格式的文本，包含隐藏的数据标记
-      const clipboardText = `<!-- ZILIU_DATA -->${JSON.stringify(extensionData)}<!-- /ZILIU_DATA -->
-
-${title}
-
-${content}`;
-
+      // 复制到剪贴板（包含特殊标记供插件识别）
+      const clipboardText = `<!-- ZILIU_CONTENT -->${JSON.stringify(contentData)}<!-- /ZILIU_CONTENT -->`;
       await navigator.clipboard.writeText(clipboardText);
 
-      // 同时保存到localStorage作为备用
-      localStorage.setItem('ziliu_clipboard_data', JSON.stringify(extensionData));
-
-      alert('内容已复制！现在可以在公众号页面使用Chrome插件一键填充。');
+      alert('内容已复制到剪贴板！\n\n请在公众号编辑页面使用字流助手插件填充内容。');
     } catch (error) {
       console.error('复制失败:', error);
       alert('复制失败，请重试');
     } finally {
       setIsCopying(false);
+    }
+  };
+
+  // 一键发布到公众号
+  const handleOneClickPublish = async () => {
+    if (!title.trim() || !content.trim()) {
+      alert('请先填写标题和内容');
+      return;
+    }
+
+    if (!preview) {
+      alert('请先生成预览');
+      return;
+    }
+
+    setIsPublishing(true);
+    try {
+      // 获取带内联样式的HTML用于公众号编辑器
+      let inlineHtml = preview;
+      try {
+        const response = await fetch('/api/convert-inline', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            content,
+            platform: 'wechat',
+            style: selectedStyle,
+          }),
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          inlineHtml = data.data.inlineHtml;
+        }
+      } catch (error) {
+        console.log('获取内联样式失败，使用预览HTML:', error);
+      }
+
+      const extensionData = {
+        title: title.trim(),
+        content: inlineHtml, // 使用带内联样式的HTML
+        previewContent: preview, // 保留预览HTML用于显示
+        platform: 'wechat',
+        style: selectedStyle,
+        timestamp: new Date().toISOString(),
+        originalContent: content,
+      };
+
+      // 尝试发送到Chrome扩展进行一键发布
+      if (typeof chrome !== 'undefined' && chrome.runtime) {
+        await new Promise((resolve, reject) => {
+          chrome.runtime.sendMessage({
+            action: 'publishToWechat',
+            data: extensionData
+          }, (response) => {
+            if (chrome.runtime.lastError) {
+              reject(new Error(chrome.runtime.lastError.message));
+            } else if (response && response.success) {
+              resolve(response);
+            } else {
+              reject(new Error(response?.error || '发布失败'));
+            }
+          });
+        });
+
+        alert('正在打开公众号页面并填充内容...');
+      } else {
+        throw new Error('未检测到字流助手扩展，请先安装扩展');
+      }
+    } catch (error) {
+      console.error('一键发布失败:', error);
+      alert(`发布失败: ${error.message}\n\n请确保已安装字流助手Chrome扩展，或使用"复制到插件"功能。`);
+    } finally {
+      setIsPublishing(false);
     }
   };
 
@@ -179,17 +282,33 @@ ${content}`;
 
             
             <Button
-              variant="outline"
+              variant="default"
               size="sm"
-              onClick={handleCopyForExtension}
-              disabled={isCopying || !preview}
+              onClick={handleOneClickPublish}
+              disabled={isPublishing || !preview}
+              className="bg-green-600 hover:bg-green-700"
             >
-              {isCopying ? (
+              {isPublishing ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Chrome className="h-4 w-4" />
               )}
-              复制到插件
+              一键发布到公众号
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCopyContent}
+              disabled={isCopying || !preview}
+              title="复制内容到剪贴板，在公众号页面使用插件填充"
+            >
+              {isCopying ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Copy className="h-4 w-4" />
+              )}
+              复制内容
             </Button>
 
             <Button

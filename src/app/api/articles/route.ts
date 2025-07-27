@@ -5,6 +5,38 @@ import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { countWords, calculateReadingTime } from '@/lib/utils';
 
+// CORS headers for Chrome extension
+function setCorsHeaders(response: NextResponse, request?: NextRequest) {
+  // 获取请求的origin
+  const origin = request?.headers.get('origin');
+
+  // 允许的源列表
+  const allowedOrigins = [
+    'http://localhost:3000',
+    'https://mp.weixin.qq.com',
+    // Chrome扩展的origin格式
+  ];
+
+  // 如果是Chrome扩展请求，允许所有chrome-extension://开头的origin
+  if (origin?.startsWith('chrome-extension://')) {
+    response.headers.set('Access-Control-Allow-Origin', origin);
+  } else if (origin && allowedOrigins.includes(origin)) {
+    response.headers.set('Access-Control-Allow-Origin', origin);
+  } else {
+    response.headers.set('Access-Control-Allow-Origin', 'http://localhost:3000');
+  }
+
+  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cookie');
+  response.headers.set('Access-Control-Allow-Credentials', 'true');
+  return response;
+}
+
+// Handle preflight requests
+export async function OPTIONS(request: NextRequest) {
+  return setCorsHeaders(new NextResponse(null, { status: 200 }), request);
+}
+
 // 创建文章的验证schema
 const createArticleSchema = z.object({
   title: z.string().min(1, '标题不能为空').max(500, '标题过长'),
@@ -17,10 +49,11 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession();
     if (!session?.user?.id) {
-      return NextResponse.json({
+      const response = NextResponse.json({
         success: false,
         error: '请先登录',
       }, { status: 401 });
+      return setCorsHeaders(response, request);
     }
 
     const body = await request.json();
@@ -40,25 +73,28 @@ export async function POST(request: NextRequest) {
       readingTime,
     }).returning();
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       data: newArticle,
       message: '文章保存成功',
     });
+    return setCorsHeaders(response, request);
   } catch (error) {
     console.error('Create article error:', error);
 
     if (error instanceof z.ZodError) {
-      return NextResponse.json({
+      const response = NextResponse.json({
         success: false,
         error: error.errors[0].message,
       }, { status: 400 });
+      return setCorsHeaders(response, request);
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: false,
       error: '保存文章失败',
     }, { status: 500 });
+    return setCorsHeaders(response, request);
   }
 }
 
@@ -67,10 +103,11 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession();
     if (!session?.user?.id) {
-      return NextResponse.json({
+      const response = NextResponse.json({
         success: false,
         error: '请先登录',
       }, { status: 401 });
+      return setCorsHeaders(response, request);
     }
 
     const { searchParams } = new URL(request.url);
@@ -94,7 +131,7 @@ export async function GET(request: NextRequest) {
       offset: (page - 1) * limit,
     });
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       data: {
         articles: userArticles,
@@ -105,12 +142,14 @@ export async function GET(request: NextRequest) {
         },
       },
     });
+    return setCorsHeaders(response, request);
   } catch (error) {
     console.error('Get articles error:', error);
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: false,
       error: '获取文章列表失败',
     }, { status: 500 });
+    return setCorsHeaders(response, request);
   }
 }

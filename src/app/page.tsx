@@ -1,7 +1,11 @@
+'use client';
+
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { useSession } from "next-auth/react";
 
 export default function Home() {
+  const { data: session, status } = useSession();
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
       {/* Header */}
@@ -16,12 +20,30 @@ export default function Home() {
             </span>
           </div>
           <div className="flex items-center space-x-3">
-            <Link href="/auth/signin">
-              <Button variant="ghost" size="sm">登录</Button>
-            </Link>
-            <Link href="/auth/signup">
-              <Button size="sm">免费注册</Button>
-            </Link>
+            {status === 'loading' ? (
+              <div className="flex items-center space-x-3">
+                <div className="w-16 h-8 bg-gray-200 rounded animate-pulse"></div>
+                <div className="w-20 h-8 bg-gray-200 rounded animate-pulse"></div>
+              </div>
+            ) : session ? (
+              <div className="flex items-center space-x-3">
+                <span className="text-sm text-gray-600">
+                  欢迎，{session.user?.name || session.user?.email}
+                </span>
+                <Link href="/dashboard">
+                  <Button size="sm">进入工作台</Button>
+                </Link>
+              </div>
+            ) : (
+              <>
+                <Link href="/auth/signin">
+                  <Button variant="ghost" size="sm">登录</Button>
+                </Link>
+                <Link href="/auth/signup">
+                  <Button size="sm">免费注册</Button>
+                </Link>
+              </>
+            )}
           </div>
         </nav>
       </header>
@@ -52,16 +74,33 @@ export default function Home() {
           </p>
 
           <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mb-16">
-            <Link href="/auth/signup">
-              <Button size="lg" className="px-10 py-4 text-lg font-semibold shadow-2xl">
-                🚀 立即免费使用
-              </Button>
-            </Link>
-            <Link href="/auth/signin">
-              <Button variant="outline" size="lg" className="px-10 py-4 text-lg font-semibold">
-                已有账户？登录
-              </Button>
-            </Link>
+            {session ? (
+              <>
+                <Link href="/dashboard">
+                  <Button size="lg" className="px-10 py-4 text-lg font-semibold shadow-2xl">
+                    🚀 进入工作台
+                  </Button>
+                </Link>
+                <Link href="/editor/new">
+                  <Button variant="outline" size="lg" className="px-10 py-4 text-lg font-semibold">
+                    ✍️ 开始创作
+                  </Button>
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link href="/auth/signup">
+                  <Button size="lg" className="px-10 py-4 text-lg font-semibold shadow-2xl">
+                    🚀 立即免费使用
+                  </Button>
+                </Link>
+                <Link href="/auth/signin">
+                  <Button variant="outline" size="lg" className="px-10 py-4 text-lg font-semibold">
+                    已有账户？登录
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Features */}

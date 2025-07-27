@@ -5,9 +5,29 @@
 
   // 检查是否在公众号编辑页面
   function isWechatEditor() {
-    return window.location.hostname === 'mp.weixin.qq.com' && 
-           (window.location.pathname.includes('/cgi-bin/appmsg') || 
-            window.location.pathname.includes('/advanced/tmpl'));
+    return window.location.hostname === 'mp.weixin.qq.com' &&
+           (window.location.pathname.includes('/cgi-bin/appmsg') ||
+            window.location.pathname.includes('/advanced/tmpl') ||
+            window.location.pathname.includes('/cgi-bin/operate_appmsg') ||
+            document.querySelector('.rich_media_editor') ||
+            document.querySelector('.weui-desktop-editor'));
+  }
+
+  // 检测编辑器类型
+  function detectEditorType() {
+    // 新版编辑器
+    if (document.querySelector('.weui-desktop-editor__wrp')) {
+      return 'new';
+    }
+    // 旧版UEditor
+    if (document.querySelector('#ueditor_0') || document.querySelector('.edui-editor')) {
+      return 'ueditor';
+    }
+    // 富文本编辑器
+    if (document.querySelector('.rich_media_editor')) {
+      return 'rich_media';
+    }
+    return 'unknown';
   }
 
   // 显示通知
@@ -80,31 +100,79 @@
   // 填充标题
   async function fillTitle(title) {
     try {
-      // 尝试多种可能的标题输入框选择器
-      const titleSelectors = [
-        '#title',
-        'input[placeholder*="标题"]',
-        'input[placeholder*="请输入标题"]',
-        '.title input',
-        '.weui-desktop-form__input[placeholder*="标题"]'
-      ];
+      // 根据编辑器类型选择不同的选择器
+      const editorType = detectEditorType();
+      let titleSelectors = [];
+
+      switch (editorType) {
+        case 'new':
+          titleSelectors = [
+            '.weui-desktop-form__input[placeholder*="标题"]',
+            '.weui-desktop-form__input[placeholder*="请输入标题"]',
+            'input[data-testid="title"]',
+            '.js_title input'
+          ];
+          break;
+        case 'ueditor':
+          titleSelectors = [
+            '#title',
+            'input[placeholder*="标题"]',
+            '.title input'
+          ];
+          break;
+        case 'rich_media':
+          titleSelectors = [
+            '.rich_media_title input',
+            'input[name="title"]',
+            '#js_title'
+          ];
+          break;
+        default:
+          titleSelectors = [
+            '#title',
+            'input[placeholder*="标题"]',
+            'input[placeholder*="请输入标题"]',
+            '.title input',
+            '.weui-desktop-form__input[placeholder*="标题"]',
+            '.rich_media_title input',
+            'input[data-testid="title"]'
+          ];
+      }
 
       let titleInput = null;
       for (const selector of titleSelectors) {
         titleInput = document.querySelector(selector);
-        if (titleInput) break;
+        if (titleInput && titleInput.offsetParent !== null) { // 确保元素可见
+          break;
+        }
       }
 
       if (!titleInput) {
         // 如果直接查找不到，等待页面加载
-        titleInput = await waitForElement(titleSelectors[0], 5000);
+        for (const selector of titleSelectors) {
+          try {
+            titleInput = await waitForElement(selector, 2000);
+            if (titleInput) break;
+          } catch (e) {
+            continue;
+          }
+        }
       }
 
       if (titleInput) {
+        // 清空现有内容
+        titleInput.value = '';
         titleInput.focus();
+
+        // 模拟用户输入
         titleInput.value = title;
+
+        // 触发各种事件确保编辑器识别
+        titleInput.dispatchEvent(new Event('focus', { bubbles: true }));
         titleInput.dispatchEvent(new Event('input', { bubbles: true }));
         titleInput.dispatchEvent(new Event('change', { bubbles: true }));
+        titleInput.dispatchEvent(new Event('blur', { bubbles: true }));
+
         return true;
       }
     } catch (error) {
@@ -116,98 +184,251 @@
   // 填充内容
   async function fillContent(content) {
     try {
-      // 尝试多种可能的编辑器选择器
-      const editorSelectors = [
+      const editorType = detectEditorType();
+      let editorSelectors = [];
+      let success = false;
+
+      switch (editorType) {
+        case 'new':
+          success = await fillNewEditor(content);
+          break;
+        case 'ueditor':
+          success = await fillUEditor(content);
+          break;
+        case 'rich_media':
+          success = await fillRichMediaEditor(content);
+          break;
+        default:
+          // 尝试所有可能的方法
+          success = await fillNewEditor(content) ||
+                   await fillUEditor(content) ||
+                   await fillRichMediaEditor(content);
+      }
+
+      return success;
+    } catch (error) {
+      console.error('填充内容失败:', error);
+      return false;
+    }
+  }
+
+  // 填充新版编辑器
+  async function fillNewEditor(content) {
+    try {
+      const selectors = [
+        '.weui-desktop-editor__wrp iframe',
+        '.weui-desktop-editor__wrp .ql-editor',
+        '[data-testid="editor"] iframe',
+        '.js_editor iframe'
+      ];
+
+      for (const selector of selectors) {
+        const editor = document.querySelector(selector);
+        if (editor && editor.offsetParent !== null) {
+          if (editor.tagName === 'IFRAME') {
+            return await fillIframeEditor(editor, content);
+          } else {
+            return fillDirectEditor(editor, content);
+          }
+        }
+      }
+      return false;
+    } catch (error) {
+      console.error('新版编辑器填充失败:', error);
+      return false;
+    }
+  }
+
+  // 填充UEditor
+  async function fillUEditor(content) {
+    try {
+      const selectors = [
         '#ueditor_0',
         '.edui-editor-body',
         '.edui-body-container',
-        'iframe[id*="ueditor"]',
-        '.weui-desktop-editor__wrp iframe'
+        'iframe[id*="ueditor"]'
       ];
 
-      let editor = null;
-      for (const selector of editorSelectors) {
-        editor = document.querySelector(selector);
-        if (editor) break;
-      }
-
-      if (!editor) {
-        editor = await waitForElement(editorSelectors[0], 5000);
-      }
-
-      if (editor) {
-        // 如果是iframe，需要访问其内容
-        if (editor.tagName === 'IFRAME') {
-          try {
-            const iframeDoc = editor.contentDocument || editor.contentWindow.document;
-            const body = iframeDoc.body;
-            if (body) {
-              body.innerHTML = content;
-              // 触发编辑器更新事件
-              body.dispatchEvent(new Event('input', { bubbles: true }));
-              return true;
-            }
-          } catch (e) {
-            console.error('无法访问iframe内容:', e);
+      for (const selector of selectors) {
+        const editor = document.querySelector(selector);
+        if (editor && editor.offsetParent !== null) {
+          if (editor.tagName === 'IFRAME') {
+            return await fillIframeEditor(editor, content);
+          } else {
+            return fillDirectEditor(editor, content);
           }
-        } else {
-          // 直接设置内容
-          editor.innerHTML = content;
-          editor.dispatchEvent(new Event('input', { bubbles: true }));
-          return true;
         }
       }
+      return false;
     } catch (error) {
-      console.error('填充内容失败:', error);
+      console.error('UEditor填充失败:', error);
+      return false;
     }
-    return false;
+  }
+
+  // 填充富文本编辑器
+  async function fillRichMediaEditor(content) {
+    try {
+      const selectors = [
+        '.rich_media_editor iframe',
+        '.rich_media_content',
+        '#js_content'
+      ];
+
+      for (const selector of selectors) {
+        const editor = document.querySelector(selector);
+        if (editor && editor.offsetParent !== null) {
+          if (editor.tagName === 'IFRAME') {
+            return await fillIframeEditor(editor, content);
+          } else {
+            return fillDirectEditor(editor, content);
+          }
+        }
+      }
+      return false;
+    } catch (error) {
+      console.error('富文本编辑器填充失败:', error);
+      return false;
+    }
+  }
+
+  // 填充iframe编辑器
+  async function fillIframeEditor(iframe, content) {
+    try {
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+      if (!iframeDoc) return false;
+
+      const body = iframeDoc.body || iframeDoc.querySelector('[contenteditable]');
+      if (body) {
+        // 清空现有内容
+        body.innerHTML = '';
+
+        // 设置新内容
+        body.innerHTML = content;
+
+        // 触发各种事件
+        body.dispatchEvent(new Event('input', { bubbles: true }));
+        body.dispatchEvent(new Event('change', { bubbles: true }));
+
+        // 尝试触发iframe外部的事件
+        iframe.dispatchEvent(new Event('input', { bubbles: true }));
+
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('iframe编辑器填充失败:', error);
+      return false;
+    }
+  }
+
+  // 填充直接编辑器
+  function fillDirectEditor(editor, content) {
+    try {
+      // 清空现有内容
+      editor.innerHTML = '';
+
+      // 设置新内容
+      editor.innerHTML = content;
+
+      // 触发事件
+      editor.dispatchEvent(new Event('input', { bubbles: true }));
+      editor.dispatchEvent(new Event('change', { bubbles: true }));
+
+      return true;
+    } catch (error) {
+      console.error('直接编辑器填充失败:', error);
+      return false;
+    }
   }
 
   // 主要的填充函数
-  async function fillWechatEditor(data) {
+  async function fillWechatEditor(data, isAutoFill = false) {
     if (!isWechatEditor()) {
       showNotification('请在公众号编辑页面使用此功能', 'error');
-      return;
+      return { success: false, error: '不在公众号编辑页面' };
     }
 
     try {
-      showNotification('开始填充内容...', 'info');
+      const editorType = detectEditorType();
+      showNotification(`开始填充内容... (检测到${editorType}编辑器)`, 'info');
 
       let titleSuccess = false;
       let contentSuccess = false;
+      let errors = [];
+
+      // 等待页面完全加载
+      if (isAutoFill) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
 
       // 填充标题
       if (data.title) {
         titleSuccess = await fillTitle(data.title);
+        if (!titleSuccess) {
+          errors.push('标题填充失败');
+        }
       }
+
+      // 等待一下再填充内容
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       // 填充内容
       if (data.content) {
         contentSuccess = await fillContent(data.content);
+        if (!contentSuccess) {
+          errors.push('内容填充失败');
+        }
       }
 
       // 显示结果
       if (titleSuccess && contentSuccess) {
         showNotification('内容填充成功！', 'success');
+        return { success: true };
       } else if (titleSuccess || contentSuccess) {
-        showNotification('部分内容填充成功', 'info');
+        const message = `部分内容填充成功 (${errors.join(', ')})`;
+        showNotification(message, 'info');
+        return { success: true, partial: true, errors };
       } else {
-        showNotification('填充失败，请手动复制粘贴', 'error');
+        const message = `填充失败: ${errors.join(', ')}`;
+        showNotification(message, 'error');
+        return { success: false, errors };
       }
 
     } catch (error) {
       console.error('填充过程出错:', error);
       showNotification('填充失败，请重试', 'error');
+      return { success: false, error: error.message };
     }
   }
 
-  // 监听来自popup的消息
+  // 监听来自popup和background的消息
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    console.log('Content script收到消息:', message);
+
     if (message.action === 'fillContent') {
-      fillWechatEditor(message.data)
-        .then(() => sendResponse({ success: true }))
+      fillWechatEditor(message.data, false)
+        .then(result => sendResponse(result))
         .catch(error => sendResponse({ success: false, error: error.message }));
       return true; // 保持消息通道开放
+    }
+
+    if (message.action === 'autoFillContent') {
+      // 自动填充（来自一键发布）
+      fillWechatEditor(message.data, true)
+        .then(result => {
+          if (result.success) {
+            showNotification('一键发布成功！内容已自动填充', 'success');
+          }
+          sendResponse(result);
+        })
+        .catch(error => sendResponse({ success: false, error: error.message }));
+      return true;
+    }
+
+    if (message.action === 'contentUpdated') {
+      // 通知有新内容可用
+      showNotification('检测到新的字流内容，请打开插件填充', 'info');
     }
   });
 

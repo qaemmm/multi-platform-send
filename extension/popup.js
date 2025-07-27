@@ -1,160 +1,280 @@
 // 字流助手 - 弹窗脚本
 
 document.addEventListener('DOMContentLoaded', function() {
-  const pageStatus = document.getElementById('pageStatus');
-  const pageStatusText = document.getElementById('pageStatusText');
-  const dataStatus = document.getElementById('dataStatus');
-  const dataStatusText = document.getElementById('dataStatusText');
-  const message = document.getElementById('message');
-  const fillBtn = document.getElementById('fillBtn');
-  const fillBtnText = document.getElementById('fillBtnText');
-  const loading = document.getElementById('loading');
-  const openWebBtn = document.getElementById('openWebBtn');
+  // DOM 元素
+  const loginCheck = document.getElementById('login-check');
+  const notLoggedIn = document.getElementById('not-logged-in');
+  const notWechat = document.getElementById('not-wechat');
+  const articleList = document.getElementById('article-list');
+  const articlesContainer = document.getElementById('articles-container');
+  const loadingArticles = document.getElementById('loading-articles');
+  const noArticles = document.getElementById('no-articles');
+  const fillSuccess = document.getElementById('fill-success');
+  const errorDiv = document.getElementById('error');
+  const errorMessage = document.getElementById('error-message');
+  const openZiliuBtn = document.getElementById('open-ziliu');
+  const refreshLoginBtn = document.getElementById('refresh-login');
+  const refreshBtn = document.getElementById('refresh-articles');
+  const searchInput = document.getElementById('search-input');
+  const filterTabs = document.querySelectorAll('.filter-tab');
 
+  // 状态变量
   let currentTab = null;
-  let clipboardData = null;
+  let articles = [];
+  let filteredArticles = [];
+  let currentFilter = 'all';
+  let searchQuery = '';
 
-  // 显示消息
-  function showMessage(text, type = 'info') {
-    message.textContent = text;
-    message.className = `message ${type}`;
-    message.style.display = 'block';
-    
+  // 显示错误消息
+  function showError(message) {
+    errorMessage.textContent = message;
+    errorDiv.style.display = 'block';
     setTimeout(() => {
-      message.style.display = 'none';
+      errorDiv.style.display = 'none';
+    }, 5000);
+  }
+
+  // 显示成功消息
+  function showSuccess() {
+    fillSuccess.style.display = 'block';
+    setTimeout(() => {
+      fillSuccess.style.display = 'none';
     }, 3000);
   }
 
-  // 设置状态
-  function setStatus(element, textElement, status, text) {
-    element.className = `status-icon ${status}`;
-    textElement.textContent = text;
+  // 隐藏所有视图
+  function hideAllViews() {
+    loginCheck.style.display = 'none';
+    notLoggedIn.style.display = 'none';
+    notWechat.style.display = 'none';
+    articleList.style.display = 'none';
+    fillSuccess.style.display = 'none';
+    errorDiv.style.display = 'none';
   }
 
-  // 设置按钮加载状态
-  function setButtonLoading(isLoading) {
-    if (isLoading) {
-      loading.style.display = 'block';
-      fillBtnText.textContent = '填充中...';
-      fillBtn.disabled = true;
-    } else {
-      loading.style.display = 'none';
-      fillBtnText.textContent = '一键填充内容';
-      fillBtn.disabled = false;
+  // 检查登录状态
+  async function checkLoginStatus() {
+    try {
+      const response = await fetch('http://localhost:3000/api/articles?limit=1', {
+        credentials: 'include'
+      });
+
+      if (response.status === 401) {
+        return false;
+      }
+
+      const data = await response.json();
+      return data.success;
+    } catch (error) {
+      console.error('检查登录状态失败:', error);
+      return false;
+    }
+  }
+
+  // 获取文章列表
+  async function fetchArticles() {
+    try {
+      loadingArticles.style.display = 'block';
+      noArticles.style.display = 'none';
+
+      const response = await fetch('http://localhost:3000/api/articles?limit=50', {
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        throw new Error('获取文章列表失败');
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        articles = data.data.articles;
+        filterAndDisplayArticles();
+      } else {
+        throw new Error(data.error || '获取文章列表失败');
+      }
+    } catch (error) {
+      console.error('获取文章列表失败:', error);
+      showError(error.message);
+      noArticles.style.display = 'block';
+    } finally {
+      loadingArticles.style.display = 'none';
+    }
+  }
+
+  // 过滤和显示文章
+  function filterAndDisplayArticles() {
+    // 按状态过滤
+    filteredArticles = articles.filter(article => {
+      if (currentFilter === 'all') return true;
+      return article.status === currentFilter;
+    });
+
+    // 按搜索关键词过滤
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filteredArticles = filteredArticles.filter(article =>
+        article.title.toLowerCase().includes(query)
+      );
+    }
+
+    displayArticles();
+  }
+
+  // 显示文章列表
+  function displayArticles() {
+    articlesContainer.innerHTML = '';
+
+    if (filteredArticles.length === 0) {
+      noArticles.style.display = 'block';
+      return;
+    }
+
+    noArticles.style.display = 'none';
+
+    filteredArticles.forEach(article => {
+      const articleElement = createArticleElement(article);
+      articlesContainer.appendChild(articleElement);
+    });
+  }
+
+  // 创建文章元素
+  function createArticleElement(article) {
+    const div = document.createElement('div');
+    div.className = 'article-item';
+    div.dataset.articleId = article.id;
+
+    const date = new Date(article.updatedAt).toLocaleDateString('zh-CN');
+    const statusText = article.status === 'published' ? '已发布' : '草稿';
+    const statusClass = article.status;
+
+    div.innerHTML = `
+      <div class="article-title">${article.title}</div>
+      <div class="article-meta">
+        <span>${date} · ${article.wordCount}字</span>
+        <span class="article-status ${statusClass}">${statusText}</span>
+      </div>
+    `;
+
+    div.addEventListener('click', () => selectArticle(article.id));
+
+    return div;
+  }
+
+  // 选择文章并填充到编辑器
+  async function selectArticle(articleId) {
+    try {
+      // 检查是否在公众号编辑器页面
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tab.url.includes('mp.weixin.qq.com')) {
+        showError('请在微信公众号编辑器页面使用此功能');
+        return;
+      }
+
+      // 获取文章详情
+      const response = await fetch(`http://localhost:3000/api/articles/${articleId}?format=inline`, {
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        throw new Error('获取文章内容失败');
+      }
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || '获取文章内容失败');
+      }
+
+      const article = data.data;
+
+      // 发送消息到content script填充内容
+      chrome.tabs.sendMessage(tab.id, {
+        action: 'fillContent',
+        data: {
+          title: article.title,
+          content: article.content
+        }
+      }, (response) => {
+        if (chrome.runtime.lastError) {
+          showError('填充内容失败: ' + chrome.runtime.lastError.message);
+        } else if (response && response.success) {
+          showSuccess();
+        } else {
+          showError(response?.error || '填充内容失败');
+        }
+      });
+
+    } catch (error) {
+      console.error('选择文章失败:', error);
+      showError(error.message);
     }
   }
 
   // 检查当前页面
   function checkCurrentPage() {
-    chrome.runtime.sendMessage({ action: 'getActiveTab' }, (response) => {
-      if (response && response.tab) {
-        currentTab = response.tab;
-        
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs && tabs[0]) {
+        currentTab = tabs[0];
+
         if (currentTab.url.includes('mp.weixin.qq.com')) {
-          setStatus(pageStatus, pageStatusText, 'success', '已检测到公众号页面');
-          checkClipboardData();
+          // 在公众号编辑器页面，显示文章列表
+          hideAllViews();
+          articleList.style.display = 'block';
+          fetchArticles();
         } else {
-          setStatus(pageStatus, pageStatusText, 'error', '请在公众号编辑页面使用');
-          setStatus(dataStatus, dataStatusText, 'warning', '请先打开公众号页面');
+          // 不在公众号编辑器页面
+          hideAllViews();
+          notWechat.style.display = 'block';
         }
       }
     });
   }
-
-  // 检查剪贴板数据
-  async function checkClipboardData() {
-    try {
-      // 尝试从localStorage获取数据（模拟从字流网站复制的数据）
-      const data = localStorage.getItem('ziliu_clipboard_data');
-      
-      if (data) {
-        clipboardData = JSON.parse(data);
-        setStatus(dataStatus, dataStatusText, 'success', '已检测到字流数据');
-        fillBtn.disabled = false;
-      } else {
-        // 尝试读取剪贴板
-        try {
-          const text = await navigator.clipboard.readText();
-          if (text && text.includes('<!-- ZILIU_DATA -->')) {
-            // 解析字流格式的数据
-            const match = text.match(/<!-- ZILIU_DATA -->(.*?)<!-- \/ZILIU_DATA -->/s);
-            if (match) {
-              clipboardData = JSON.parse(match[1]);
-              setStatus(dataStatus, dataStatusText, 'success', '已检测到字流数据');
-              fillBtn.disabled = false;
-            } else {
-              throw new Error('数据格式错误');
-            }
-          } else {
-            throw new Error('未找到字流数据');
-          }
-        } catch (clipboardError) {
-          setStatus(dataStatus, dataStatusText, 'warning', '请先在字流网站复制内容');
-          // 提供示例数据用于测试
-          clipboardData = {
-            title: '测试文章标题',
-            content: `
-              <h1>这是一个测试标题</h1>
-              <p>这是一个测试段落，用于验证字流助手的功能。</p>
-              <h2>二级标题</h2>
-              <ul>
-                <li>列表项1</li>
-                <li>列表项2</li>
-              </ul>
-              <blockquote>这是一个引用块</blockquote>
-            `
-          };
-          fillBtn.disabled = false;
-          setStatus(dataStatus, dataStatusText, 'success', '使用测试数据');
-        }
-      }
-    } catch (error) {
-      console.error('检查数据失败:', error);
-      setStatus(dataStatus, dataStatusText, 'error', '数据检查失败');
-    }
-  }
-
-  // 填充内容
-  function fillContent() {
-    if (!currentTab || !clipboardData) {
-      showMessage('缺少必要数据，请重试', 'error');
-      return;
-    }
-
-    if (!currentTab.url.includes('mp.weixin.qq.com')) {
-      showMessage('请在公众号编辑页面使用此功能', 'error');
-      return;
-    }
-
-    setButtonLoading(true);
-
-    chrome.runtime.sendMessage({
-      action: 'fillContentToTab',
-      data: clipboardData
-    }, (response) => {
-      setButtonLoading(false);
-      
-      if (response && response.success) {
-        showMessage('内容填充成功！', 'success');
-      } else {
-        const errorMsg = response ? response.error : '填充失败，请重试';
-        showMessage(errorMsg, 'error');
-      }
-    });
-  }
-
-  // 打开字流网站
-  function openWebsite() {
-    chrome.tabs.create({ url: 'http://localhost:3000' });
-  }
-
-  // 事件监听
-  fillBtn.addEventListener('click', fillContent);
-  openWebBtn.addEventListener('click', openWebsite);
 
   // 初始化
-  checkCurrentPage();
+  async function init() {
+    hideAllViews();
+    loginCheck.style.display = 'block';
 
-  // 定期检查页面状态
-  setInterval(checkCurrentPage, 2000);
+    // 检查登录状态
+    const isLoggedIn = await checkLoginStatus();
+
+    if (!isLoggedIn) {
+      hideAllViews();
+      notLoggedIn.style.display = 'block';
+      return;
+    }
+
+    // 已登录，检查当前页面
+    checkCurrentPage();
+  }
+
+  // 事件监听器
+  openZiliuBtn.addEventListener('click', () => {
+    chrome.tabs.create({ url: 'http://localhost:3000' });
+  });
+
+  refreshLoginBtn.addEventListener('click', () => {
+    init(); // 重新检查登录状态
+  });
+
+  refreshBtn.addEventListener('click', fetchArticles);
+
+  searchInput.addEventListener('input', (e) => {
+    searchQuery = e.target.value;
+    filterAndDisplayArticles();
+  });
+
+  filterTabs.forEach(tab => {
+    tab.addEventListener('click', (e) => {
+      // 更新活动标签
+      filterTabs.forEach(t => t.classList.remove('active'));
+      e.target.classList.add('active');
+
+      // 更新过滤器
+      currentFilter = e.target.dataset.status;
+      filterAndDisplayArticles();
+    });
+  });
+
+  // 启动初始化
+  init();
 });
