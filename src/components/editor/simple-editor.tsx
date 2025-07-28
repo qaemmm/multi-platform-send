@@ -168,8 +168,8 @@ export function SimpleEditor({
     }
   };
 
-  // 一键发布到公众号
-  const handleOneClickPublish = async () => {
+  // 复制到公众号
+  const handleCopyToWechat = async () => {
     if (!title.trim() || !content.trim()) {
       alert('请先填写标题和内容');
       return;
@@ -180,7 +180,7 @@ export function SimpleEditor({
       return;
     }
 
-    setIsPublishing(true);
+    setIsCopying(true);
     try {
       // 获取带内联样式的HTML用于公众号编辑器
       let inlineHtml = preview;
@@ -205,42 +205,92 @@ export function SimpleEditor({
         console.log('获取内联样式失败，使用预览HTML:', error);
       }
 
-      const extensionData = {
-        title: title.trim(),
-        content: inlineHtml, // 使用带内联样式的HTML
-        previewContent: preview, // 保留预览HTML用于显示
-        platform: 'wechat',
-        style: selectedStyle,
-        timestamp: new Date().toISOString(),
-        originalContent: content,
-      };
+      // 预处理HTML，优化为更简洁的格式，避免被微信编辑器过度处理
+      function preprocessContentForWechat(html) {
+        let processedHtml = html;
 
-      // 尝试发送到Chrome扩展进行一键发布
-      if (typeof chrome !== 'undefined' && chrome.runtime) {
-        await new Promise((resolve, reject) => {
-          chrome.runtime.sendMessage({
-            action: 'publishToWechat',
-            data: extensionData
-          }, (response) => {
-            if (chrome.runtime.lastError) {
-              reject(new Error(chrome.runtime.lastError.message));
-            } else if (response && response.success) {
-              resolve(response);
-            } else {
-              reject(new Error(response?.error || '发布失败'));
-            }
-          });
+        // 1. 清理多余的空格和换行，但保持基本结构
+        processedHtml = processedHtml
+          .replace(/\s{3,}/g, ' ')
+          .replace(/>\s+</g, '><')
+          .replace(/(<\/p>)\s*(<p[^>]*>)/g, '$1$2')
+          .replace(/(<\/h[1-6]>)\s*(<[^>]+>)/g, '$1$2');
+
+        // 2. 特殊处理代码块 - 使用微信编辑器友好的预分行格式
+        processedHtml = processedHtml.replace(
+          /<pre><code[^>]*>([\s\S]*?)<\/code><\/pre>/g,
+          (match, codeContent) => {
+            // 清理代码内容
+            const cleanCode = codeContent
+              .replace(/^\s+|\s+$/g, '') // 去除首尾空白
+              .replace(/&lt;/g, '<')
+              .replace(/&gt;/g, '>')
+              .replace(/&amp;/g, '&');
+
+            // 按行分割代码，每行用单独的div包装
+            const lines = cleanCode.split('\n').filter(line => line.trim() !== '');
+            const codeLines = lines.map(line =>
+              `<div style="margin: 0; padding: 0; line-height: 1.5;">${line.replace(/  /g, '&nbsp;&nbsp;')}</div>`
+            ).join('');
+
+            // 使用div包装整个代码块，确保微信编辑器正确处理
+            return `<div style="background-color: #f6f8fa; border: 1px solid #e1e4e8; border-radius: 6px; padding: 16px; margin: 16px 0; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 14px; overflow-x: auto;">${codeLines}</div>`;
+          }
+        );
+
+        // 3. 简化其他HTML结构
+        processedHtml = processedHtml
+          // 移除可能导致微信编辑器过度处理的class和id属性
+          .replace(/\sclass="[^"]*"/g, '')
+          .replace(/\sid="[^"]*"/g, '')
+          // 将section标签替换为div标签
+          .replace(/<section[^>]*>/g, '<div>')
+          .replace(/<\/section>/g, '</div>')
+          // 简化列表结构
+          .replace(/<li>\s*<p>(.*?)<\/p>\s*<\/li>/g, '<li>$1</li>');
+
+        return processedHtml;
+      }
+
+      // 应用格式优化
+      const optimizedHtml = preprocessContentForWechat(inlineHtml);
+
+      // 创建一个临时的DOM元素来渲染HTML
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = optimizedHtml;
+      tempDiv.style.position = 'absolute';
+      tempDiv.style.left = '-9999px';
+      tempDiv.style.top = '-9999px';
+      document.body.appendChild(tempDiv);
+
+      try {
+        // 创建富文本复制数据
+        const clipboardData = new ClipboardItem({
+          'text/html': new Blob([optimizedHtml], { type: 'text/html' }),
+          'text/plain': new Blob([tempDiv.textContent || tempDiv.innerText || ''], { type: 'text/plain' })
         });
 
-        alert('正在打开公众号页面并填充内容...');
-      } else {
-        throw new Error('未检测到字流助手扩展，请先安装扩展');
+        // 复制富文本到剪贴板
+        await navigator.clipboard.write([clipboardData]);
+
+        alert('✅ 内容已复制到剪贴板！\n\n请打开微信公众号编辑器，直接粘贴即可保持格式。\n\n💡 提示：粘贴时会保持所有格式，包括标题、代码块、列表等。');
+      } catch (error) {
+        console.error('富文本复制失败，尝试纯文本复制:', error);
+
+        // 降级方案：复制纯文本
+        const plainText = tempDiv.textContent || tempDiv.innerText || '';
+        await navigator.clipboard.writeText(plainText);
+
+        alert('⚠️ 已复制纯文本内容到剪贴板。\n\n由于浏览器限制，无法复制富文本格式。\n建议使用Chrome浏览器以获得最佳体验。');
+      } finally {
+        // 清理临时元素
+        document.body.removeChild(tempDiv);
       }
     } catch (error) {
-      console.error('一键发布失败:', error);
-      alert(`发布失败: ${error.message}\n\n请确保已安装字流助手Chrome扩展，或使用"复制到插件"功能。`);
+      console.error('复制失败:', error);
+      alert(`复制失败: ${error.message}`);
     } finally {
-      setIsPublishing(false);
+      setIsCopying(false);
     }
   };
 
@@ -284,16 +334,16 @@ export function SimpleEditor({
             <Button
               variant="default"
               size="sm"
-              onClick={handleOneClickPublish}
-              disabled={isPublishing || !preview}
+              onClick={handleCopyToWechat}
+              disabled={isCopying || !preview}
               className="bg-green-600 hover:bg-green-700"
             >
-              {isPublishing ? (
+              {isCopying ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Chrome className="h-4 w-4" />
+                <Copy className="h-4 w-4" />
               )}
-              一键发布到公众号
+              复制到公众号
             </Button>
 
             <Button
