@@ -216,22 +216,78 @@
   async function fillNewEditor(content) {
     try {
       const selectors = [
+        // ProseMirror编辑器（微信新版编辑器）- 最高优先级
+        '#ueditor_0 .ProseMirror',
+        '.ProseMirror[contenteditable="true"]',
+        '.rich_media_content .ProseMirror',
+        // 其他编辑器
         '.weui-desktop-editor__wrp iframe',
         '.weui-desktop-editor__wrp .ql-editor',
+        '.weui-desktop-editor__wrp [contenteditable]',
         '[data-testid="editor"] iframe',
-        '.js_editor iframe'
+        '[data-testid="editor"] [contenteditable]',
+        '.js_editor iframe',
+        '.js_editor [contenteditable]',
+        // 添加更多可能的选择器
+        '.rich_media_content [contenteditable]',
+        '.rich_media_editor [contenteditable]',
+        '#js_content',
+        '.editable-div'
+        // 移除通用的 [contenteditable="true"] 避免匹配到错误元素
       ];
+
+      console.log('尝试填充新版编辑器...');
 
       for (const selector of selectors) {
         const editor = document.querySelector(selector);
+        console.log(`🔍 检查选择器 ${selector}:`, editor);
+
         if (editor && editor.offsetParent !== null) {
-          if (editor.tagName === 'IFRAME') {
-            return await fillIframeEditor(editor, content);
-          } else {
-            return fillDirectEditor(editor, content);
+          console.log(`✅ 找到可见编辑器: ${selector}`, editor);
+
+          // 检查是否真的可编辑
+          const isEditable = editor.contentEditable === 'true' ||
+                           editor.tagName === 'IFRAME' ||
+                           editor.tagName === 'TEXTAREA' ||
+                           editor.tagName === 'INPUT';
+
+          console.log(`📊 编辑器可编辑性: ${isEditable}`);
+
+          if (isEditable) {
+            if (editor.tagName === 'IFRAME') {
+              console.log('🖼️ 使用iframe编辑器填充方法');
+              const result = await fillIframeEditor(editor, content);
+              if (result) return result;
+            } else {
+              // 特殊处理ProseMirror编辑器
+              if (editor.classList.contains('ProseMirror') || selector.includes('ProseMirror')) {
+                console.log('🎯 使用ProseMirror编辑器填充方法 - 这是正确的!');
+                const result = await fillProseMirrorEditor(editor, content);
+                if (result) return result;
+              } else if (selector === '#ueditor_0' || editor.id === 'ueditor_0') {
+                console.log('🔍 检查ueditor_0容器中的ProseMirror编辑器');
+                // 如果找到的是ueditor_0容器，尝试找其中的ProseMirror编辑器
+                const proseMirrorEditor = editor.querySelector('.ProseMirror');
+                if (proseMirrorEditor) {
+                  console.log('✅ 在ueditor_0容器中找到ProseMirror编辑器，使用ProseMirror方法:', proseMirrorEditor);
+                  const result = await fillProseMirrorEditor(proseMirrorEditor, content);
+                  if (result) return result;
+                } else {
+                  console.log('❌ 在ueditor_0容器中未找到ProseMirror，使用直接编辑器方法');
+                  const result = await fillDirectEditor(editor, content);
+                  if (result) return result;
+                }
+              } else {
+                console.log('⚠️ 使用直接编辑器填充方法 - 这可能导致问题');
+                const result = await fillDirectEditor(editor, content);
+                if (result) return result;
+              }
+            }
           }
         }
       }
+
+      console.log('新版编辑器填充失败，未找到合适的编辑器');
       return false;
     } catch (error) {
       console.error('新版编辑器填充失败:', error);
@@ -300,18 +356,46 @@
 
       const body = iframeDoc.body || iframeDoc.querySelector('[contenteditable]');
       if (body) {
-        // 清空现有内容
-        body.innerHTML = '';
+        console.log('找到iframe编辑器body:', body);
 
-        // 设置新内容
-        body.innerHTML = content;
+        // 聚焦到编辑器
+        body.focus();
 
-        // 触发各种事件
-        body.dispatchEvent(new Event('input', { bubbles: true }));
-        body.dispatchEvent(new Event('change', { bubbles: true }));
+        // 等待聚焦完成
+        await new Promise(resolve => setTimeout(resolve, 100));
 
-        // 尝试触发iframe外部的事件
+        // 选中所有内容并删除
+        const selection = iframeDoc.getSelection();
+        const range = iframeDoc.createRange();
+        range.selectNodeContents(body);
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        // 使用execCommand删除现有内容
+        iframeDoc.execCommand('delete', false, null);
+
+        // 等待删除完成
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // 使用execCommand插入HTML内容
+        const success = iframeDoc.execCommand('insertHTML', false, content);
+        console.log('execCommand insertHTML结果:', success);
+
+        if (!success) {
+          // 如果execCommand失败，尝试直接设置innerHTML
+          body.innerHTML = content;
+        }
+
+        // 触发完整的事件序列
+        await triggerEditorEvents(body, iframeDoc);
+
+        // 触发iframe外部的事件
         iframe.dispatchEvent(new Event('input', { bubbles: true }));
+        iframe.dispatchEvent(new Event('change', { bubbles: true }));
+
+        // 尝试触发微信编辑器可能监听的自定义事件
+        body.dispatchEvent(new CustomEvent('contentChanged', { bubbles: true }));
+        iframe.dispatchEvent(new CustomEvent('contentChanged', { bubbles: true }));
 
         return true;
       }
@@ -322,23 +406,210 @@
     }
   }
 
+  // 触发编辑器事件序列
+  async function triggerEditorEvents(element, doc = document) {
+    const events = [
+      'focus',
+      'beforeinput',
+      'compositionstart',
+      'input',
+      'compositionend',
+      'change',
+      'blur'
+    ];
+
+    for (const eventType of events) {
+      try {
+        const event = new Event(eventType, { bubbles: true, cancelable: true });
+        element.dispatchEvent(event);
+        await new Promise(resolve => setTimeout(resolve, 50));
+      } catch (e) {
+        console.log(`触发${eventType}事件失败:`, e);
+      }
+    }
+
+    // 触发键盘事件模拟用户输入
+    const keyEvents = ['keydown', 'keypress', 'keyup'];
+    for (const eventType of keyEvents) {
+      try {
+        const event = new KeyboardEvent(eventType, {
+          bubbles: true,
+          cancelable: true,
+          key: 'Enter',
+          code: 'Enter'
+        });
+        element.dispatchEvent(event);
+        await new Promise(resolve => setTimeout(resolve, 30));
+      } catch (e) {
+        console.log(`触发${eventType}事件失败:`, e);
+      }
+    }
+  }
+
   // 填充直接编辑器
-  function fillDirectEditor(editor, content) {
+  async function fillDirectEditor(editor, content) {
     try {
-      // 清空现有内容
-      editor.innerHTML = '';
+      console.log('填充直接编辑器:', editor);
 
-      // 设置新内容
-      editor.innerHTML = content;
+      // 聚焦到编辑器
+      editor.focus();
 
-      // 触发事件
-      editor.dispatchEvent(new Event('input', { bubbles: true }));
-      editor.dispatchEvent(new Event('change', { bubbles: true }));
+      // 等待聚焦完成
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // 选中所有内容
+      const selection = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(editor);
+      selection.removeAllRanges();
+      selection.addRange(range);
+
+      // 使用execCommand删除现有内容
+      document.execCommand('delete', false, null);
+
+      // 等待删除完成
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // 使用execCommand插入HTML内容
+      const success = document.execCommand('insertHTML', false, content);
+      console.log('execCommand insertHTML结果:', success);
+
+      if (!success) {
+        // 如果execCommand失败，尝试直接设置innerHTML
+        editor.innerHTML = content;
+      }
+
+      // 触发完整的事件序列
+      await triggerEditorEvents(editor);
+
+      // 尝试触发微信编辑器可能监听的自定义事件
+      editor.dispatchEvent(new CustomEvent('contentChanged', { bubbles: true }));
 
       return true;
     } catch (error) {
       console.error('直接编辑器填充失败:', error);
       return false;
+    }
+  }
+
+  // 填充ProseMirror编辑器（微信新版编辑器）
+  async function fillProseMirrorEditor(editor, content) {
+    try {
+      console.log('填充ProseMirror编辑器:', editor);
+
+      // 聚焦到编辑器
+      editor.focus();
+
+      // 等待聚焦完成
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      // 清空现有内容 - ProseMirror特殊处理
+      const selection = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(editor);
+      selection.removeAllRanges();
+      selection.addRange(range);
+
+      // 删除现有内容
+      document.execCommand('delete', false, null);
+
+      // 等待删除完成
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      // 尝试多种方法插入内容
+      let success = false;
+
+      // 方法1: 使用execCommand insertHTML
+      success = document.execCommand('insertHTML', false, content);
+      console.log('ProseMirror execCommand insertHTML结果:', success);
+
+      if (!success) {
+        // 方法2: 模拟粘贴操作
+        try {
+          const clipboardData = new DataTransfer();
+          clipboardData.setData('text/html', content);
+          clipboardData.setData('text/plain', content.replace(/<[^>]*>/g, ''));
+
+          const pasteEvent = new ClipboardEvent('paste', {
+            clipboardData: clipboardData,
+            bubbles: true,
+            cancelable: true
+          });
+
+          editor.dispatchEvent(pasteEvent);
+          success = true;
+          console.log('ProseMirror 模拟粘贴成功');
+        } catch (e) {
+          console.log('ProseMirror 模拟粘贴失败:', e);
+        }
+      }
+
+      if (!success) {
+        // 方法3: 直接设置innerHTML（最后的备选方案）
+        editor.innerHTML = content;
+        console.log('ProseMirror 使用innerHTML设置内容');
+      }
+
+      // 触发ProseMirror特定的事件
+      await triggerProseMirrorEvents(editor);
+
+      // 检查内容是否成功插入
+      const hasContent = editor.textContent.trim().length > 0 || editor.innerHTML.trim().length > 0;
+      console.log('ProseMirror 内容插入检查:', hasContent, editor.textContent.length);
+
+      return hasContent;
+    } catch (error) {
+      console.error('ProseMirror编辑器填充失败:', error);
+      return false;
+    }
+  }
+
+  // 触发ProseMirror特定的事件
+  async function triggerProseMirrorEvents(editor) {
+    const events = [
+      'focus',
+      'beforeinput',
+      'compositionstart',
+      'input',
+      'compositionend',
+      'change',
+      'keydown',
+      'keyup'
+    ];
+
+    for (const eventType of events) {
+      try {
+        let event;
+        if (eventType.startsWith('key')) {
+          event = new KeyboardEvent(eventType, {
+            bubbles: true,
+            cancelable: true,
+            key: 'Enter',
+            code: 'Enter'
+          });
+        } else {
+          event = new Event(eventType, { bubbles: true, cancelable: true });
+        }
+
+        editor.dispatchEvent(event);
+        await new Promise(resolve => setTimeout(resolve, 30));
+      } catch (e) {
+        console.log(`触发ProseMirror ${eventType}事件失败:`, e);
+      }
+    }
+
+    // 触发可能的自定义事件
+    try {
+      editor.dispatchEvent(new CustomEvent('contentChanged', { bubbles: true }));
+      editor.dispatchEvent(new CustomEvent('prosemirror-update', { bubbles: true }));
+
+      // 尝试触发父容器的事件
+      const ueditor = document.querySelector('#ueditor_0');
+      if (ueditor) {
+        ueditor.dispatchEvent(new CustomEvent('contentChanged', { bubbles: true }));
+      }
+    } catch (e) {
+      console.log('触发ProseMirror自定义事件失败:', e);
     }
   }
 
@@ -406,6 +677,12 @@
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log('Content script收到消息:', message);
 
+    if (message.action === 'ping') {
+      // 响应ping消息，确认content script已加载
+      sendResponse({ success: true, loaded: true });
+      return true;
+    }
+
     if (message.action === 'fillContent') {
       fillWechatEditor(message.data, false)
         .then(result => sendResponse(result))
@@ -435,10 +712,14 @@
   // 页面加载完成后的初始化
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-      console.log('字流助手已加载');
+      console.log('字流助手Content Script已加载 - DOMContentLoaded');
+      console.log('当前页面URL:', window.location.href);
+      console.log('是否为微信编辑器:', isWechatEditor());
     });
   } else {
-    console.log('字流助手已加载');
+    console.log('字流助手Content Script已加载 - Document Ready');
+    console.log('当前页面URL:', window.location.href);
+    console.log('是否为微信编辑器:', isWechatEditor());
   }
 
 })();

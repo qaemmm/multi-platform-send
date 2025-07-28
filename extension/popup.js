@@ -42,6 +42,37 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 3000);
   }
 
+  // 显示认证错误
+  function showAuthError() {
+    errorMessage.innerHTML = `
+      <div style="margin-bottom: 10px;">
+        <strong>需要登录字流账户</strong>
+      </div>
+      <div style="margin-bottom: 10px; font-size: 12px; color: #666;">
+        请先在字流网站登录，然后刷新此插件
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <button id="open-ziliu-login" style="flex: 1; padding: 6px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+          打开字流登录
+        </button>
+        <button id="refresh-auth" style="flex: 1; padding: 6px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+          重新检查
+        </button>
+      </div>
+    `;
+    errorDiv.style.display = 'block';
+
+    // 添加按钮事件监听器
+    document.getElementById('open-ziliu-login').addEventListener('click', () => {
+      chrome.tabs.create({ url: 'http://localhost:3000/auth/signin' });
+    });
+
+    document.getElementById('refresh-auth').addEventListener('click', () => {
+      errorDiv.style.display = 'none';
+      init(); // 重新初始化
+    });
+  }
+
   // 隐藏所有视图
   function hideAllViews() {
     loginCheck.style.display = 'none';
@@ -55,15 +86,33 @@ document.addEventListener('DOMContentLoaded', function() {
   // 检查登录状态
   async function checkLoginStatus() {
     try {
+      // 首先检查是否有相关的cookie
+      const cookies = await chrome.cookies.getAll({
+        url: 'http://localhost:3000'
+      });
+      console.log('找到的cookies:', cookies.map(c => c.name));
+
       const response = await fetch('http://localhost:3000/api/articles?limit=1', {
-        credentials: 'include'
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        }
       });
 
+      console.log('API响应状态:', response.status);
+
       if (response.status === 401) {
+        console.log('用户未登录 (401)');
+        return false;
+      }
+
+      if (!response.ok) {
+        console.log('请求失败:', response.status, response.statusText);
         return false;
       }
 
       const data = await response.json();
+      console.log('登录状态检查结果:', data);
       return data.success;
     } catch (error) {
       console.error('检查登录状态失败:', error);
@@ -94,7 +143,13 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     } catch (error) {
       console.error('获取文章列表失败:', error);
-      showError(error.message);
+
+      // 检查是否是认证错误
+      if (error.message.includes('401') || error.message.includes('请先登录')) {
+        showAuthError();
+      } else {
+        showError(error.message);
+      }
       noArticles.style.display = 'block';
     } finally {
       loadingArticles.style.display = 'none';
@@ -186,20 +241,28 @@ document.addEventListener('DOMContentLoaded', function() {
 
       const article = data.data;
 
-      // 发送消息到content script填充内容
-      chrome.tabs.sendMessage(tab.id, {
-        action: 'fillContent',
-        data: {
-          title: article.title,
-          content: article.content
-        }
-      }, (response) => {
+      // 首先检查content script是否已加载
+      chrome.tabs.sendMessage(tab.id, { action: 'ping' }, (response) => {
         if (chrome.runtime.lastError) {
-          showError('填充内容失败: ' + chrome.runtime.lastError.message);
-        } else if (response && response.success) {
-          showSuccess();
+          // Content script未加载，尝试注入
+          console.log('Content script未加载，尝试注入...');
+          chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            files: ['content.js']
+          }, () => {
+            if (chrome.runtime.lastError) {
+              showError('无法注入脚本: ' + chrome.runtime.lastError.message);
+              return;
+            }
+
+            // 等待脚本加载完成后再发送消息
+            setTimeout(() => {
+              sendFillMessage(tab.id, article);
+            }, 500);
+          });
         } else {
-          showError(response?.error || '填充内容失败');
+          // Content script已加载，直接发送消息
+          sendFillMessage(tab.id, article);
         }
       });
 
@@ -207,6 +270,25 @@ document.addEventListener('DOMContentLoaded', function() {
       console.error('选择文章失败:', error);
       showError(error.message);
     }
+  }
+
+  // 发送填充消息的辅助函数
+  function sendFillMessage(tabId, article) {
+    chrome.tabs.sendMessage(tabId, {
+      action: 'fillContent',
+      data: {
+        title: article.title,
+        content: article.content
+      }
+    }, (response) => {
+      if (chrome.runtime.lastError) {
+        showError('填充内容失败: ' + chrome.runtime.lastError.message);
+      } else if (response && response.success) {
+        showSuccess();
+      } else {
+        showError(response?.error || '填充内容失败');
+      }
+    });
   }
 
   // 检查当前页面
