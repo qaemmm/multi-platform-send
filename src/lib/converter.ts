@@ -75,8 +75,27 @@ export const WECHAT_STYLES = {
           margin: 16px 0;
           padding-left: 24px;
         }
+        .wechat-content ul {
+          list-style-type: disc;
+        }
+        .wechat-content ol {
+          list-style-type: decimal;
+        }
         .wechat-content li {
           margin: 8px 0;
+        }
+        /* 特殊处理：有序列表中包含标题的情况，让数字标号和标题样式保持一致 */
+        .wechat-content ol > li > h3 {
+          display: inline;
+          margin: 0;
+          font-size: 18px;
+          font-weight: 600;
+          color: #2c3e50;
+        }
+        .wechat-content ol > li::marker {
+          font-size: 18px;
+          font-weight: 600;
+          color: #2c3e50;
         }
         .wechat-content img {
           max-width: 100%;
@@ -155,6 +174,32 @@ export const WECHAT_STYLES = {
           background: none;
           color: #abb2bf;
         }
+        .wechat-content ul, .wechat-content ol {
+          margin: 16px 0;
+          padding-left: 24px;
+        }
+        .wechat-content ul {
+          list-style-type: disc;
+        }
+        .wechat-content ol {
+          list-style-type: decimal;
+        }
+        .wechat-content li {
+          margin: 8px 0;
+        }
+        /* 特殊处理：有序列表中包含标题的情况，让数字标号和标题样式保持一致 */
+        .wechat-content ol > li > h3 {
+          display: inline;
+          margin: 0;
+          font-size: 18px;
+          color: #764ba2;
+          font-family: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", monospace;
+        }
+        .wechat-content ol > li::marker {
+          font-size: 18px;
+          color: #764ba2;
+          font-family: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", monospace;
+        }
         .wechat-content blockquote {
           border-left: 4px solid #667eea;
           padding-left: 16px;
@@ -215,6 +260,35 @@ export const WECHAT_STYLES = {
           border-radius: 4px;
           margin: 20px 0;
           border: 1px solid #eee;
+        }
+        .wechat-content ul, .wechat-content ol {
+          margin: 20px 0;
+          padding-left: 24px;
+        }
+        .wechat-content ul {
+          list-style-type: disc;
+        }
+        .wechat-content ol {
+          list-style-type: decimal;
+        }
+        .wechat-content li {
+          margin: 8px 0;
+          line-height: 1.8;
+        }
+        /* 特殊处理：有序列表中包含标题的情况，让数字标号和标题样式保持一致 */
+        .wechat-content ol > li > h3 {
+          display: inline;
+          margin: 0;
+          font-size: 18px;
+          font-weight: 400;
+          color: #2c3e50;
+          font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+        }
+        .wechat-content ol > li::marker {
+          font-size: 18px;
+          font-weight: 400;
+          color: #2c3e50;
+          font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
         }
         .wechat-content blockquote {
           border-left: 2px solid #ddd;
@@ -349,8 +423,8 @@ function getInlineStylesForWechat(styleKey: keyof typeof WECHAT_STYLES) {
       code: 'background: #f8f9fa; padding: 2px 6px; border-radius: 3px; font-family: "SF Mono", Monaco, "Cascadia Code", monospace; color: #e74c3c; font-size: 14px; white-space: pre-wrap;',
       pre: 'background: #f8f9fa; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 16px 0; border-left: 4px solid #3498db; font-family: "SF Mono", Monaco, "Cascadia Code", monospace; white-space: pre-wrap;',
       blockquote: 'border-left: 4px solid #bdc3c7; padding: 12px 16px; margin: 16px 0; color: #7f8c8d; font-style: italic; background: #f9f9f9; border-radius: 4px;',
-      ul: 'margin: 16px 0; padding-left: 24px;',
-      ol: 'margin: 16px 0; padding-left: 24px;',
+      ul: 'margin: 16px 0; padding-left: 24px; list-style-type: disc;',
+      ol: 'margin: 16px 0; padding-left: 24px; list-style-type: decimal;',
       li: 'margin: 8px 0; line-height: 1.6;',
       strong: 'font-weight: 600; color: #2c3e50;',
       em: 'font-style: italic; color: #34495e;'
@@ -363,8 +437,8 @@ function getInlineStylesForWechat(styleKey: keyof typeof WECHAT_STYLES) {
       code: 'background: #282c34; color: #abb2bf; padding: 2px 6px; border-radius: 4px; font-size: 14px; font-family: "SF Mono", Monaco, "Cascadia Code", monospace; white-space: pre-wrap;',
       pre: 'background: #282c34; color: #abb2bf; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 16px 0; font-family: "SF Mono", Monaco, "Cascadia Code", monospace; white-space: pre-wrap;',
       blockquote: 'border-left: 4px solid #667eea; padding: 12px 16px; margin: 16px 0; color: #7f8c8d; background: #f8f9ff; border-radius: 4px;',
-      ul: 'margin: 16px 0; padding-left: 24px;',
-      ol: 'margin: 16px 0; padding-left: 24px;',
+      ul: 'margin: 16px 0; padding-left: 24px; list-style-type: disc;',
+      ol: 'margin: 16px 0; padding-left: 24px; list-style-type: decimal;',
       li: 'margin: 8px 0; line-height: 1.6;',
       strong: 'font-weight: 600; color: #667eea;',
       em: 'font-style: italic; color: #764ba2;'
@@ -377,8 +451,8 @@ function getInlineStylesForWechat(styleKey: keyof typeof WECHAT_STYLES) {
       code: 'background: #f5f5f5; padding: 2px 4px; border-radius: 2px; font-size: 14px; color: #666; font-family: monospace; white-space: pre-wrap;',
       pre: 'background: #fafafa; padding: 20px; border-radius: 4px; margin: 20px 0; border: 1px solid #eee; font-family: monospace; white-space: pre-wrap;',
       blockquote: 'border-left: 2px solid #ddd; padding-left: 20px; margin: 20px 0; color: #666; font-style: normal;',
-      ul: 'margin: 20px 0; padding-left: 24px;',
-      ol: 'margin: 20px 0; padding-left: 24px;',
+      ul: 'margin: 20px 0; padding-left: 24px; list-style-type: disc;',
+      ol: 'margin: 20px 0; padding-left: 24px; list-style-type: decimal;',
       li: 'margin: 8px 0; line-height: 1.8;',
       strong: 'font-weight: 600; color: #2c3e50;',
       em: 'font-style: italic; color: #555;'

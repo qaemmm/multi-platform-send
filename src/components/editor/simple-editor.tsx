@@ -505,12 +505,7 @@ console.log('代码示例');
                     <div className="px-4 py-4">
                       {preview ? (
                         <div
-                          className="prose prose-sm max-w-none text-gray-800 leading-relaxed"
-                          style={{
-                            fontSize: '16px',
-                            lineHeight: '1.7',
-                            color: '#333'
-                          }}
+                          className="wechat-content"
                           dangerouslySetInnerHTML={{ __html: preview }}
                         />
                       ) : (
