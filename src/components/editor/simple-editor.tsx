@@ -5,9 +5,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Save, FileText, Loader2, Copy, Chrome, ArrowLeft } from 'lucide-react';
+import { Save, FileText, Loader2, Copy, Chrome, ArrowLeft, Upload } from 'lucide-react';
 import Link from 'next/link';
 import { countWords, calculateReadingTime } from '@/lib/utils';
+import { FeishuImportDialog } from './feishu-import-dialog';
 
 interface EditorProps {
   initialTitle?: string;
@@ -29,6 +30,7 @@ export function SimpleEditor({
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [isCopying, setIsCopying] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [showFeishuImport, setShowFeishuImport] = useState(false);
 
   // 计算统计信息
   const wordCount = countWords(content);
@@ -95,6 +97,16 @@ export function SimpleEditor({
       alert('保存失败，请重试');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // 处理飞书导入
+  const handleFeishuImport = (importedTitle: string, importedContent: string) => {
+    if (importedTitle && !title.trim()) {
+      setTitle(importedTitle);
+    }
+    if (importedContent) {
+      setContent(importedContent);
     }
   };
 
@@ -319,6 +331,18 @@ export function SimpleEditor({
           </div>
           
           <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFeishuImport(true)}
+              className="text-blue-600 border-blue-200 hover:bg-blue-50"
+            >
+              <Upload className="h-4 w-4 mr-1" />
+              导入飞书文档
+            </Button>
+
+            <div className="h-4 w-px bg-gray-300"></div>
+
             <select
               value={selectedStyle}
               onChange={(e) => setSelectedStyle(e.target.value as any)}
@@ -328,9 +352,7 @@ export function SimpleEditor({
               <option value="tech">技术风格</option>
               <option value="minimal">简约风格</option>
             </select>
-            
 
-            
             <Button
               variant="default"
               size="sm"
@@ -522,6 +544,13 @@ console.log('代码示例');
           </div>
         </div>
       </div>
+
+      {/* 飞书导入弹框 */}
+      <FeishuImportDialog
+        open={showFeishuImport}
+        onOpenChange={setShowFeishuImport}
+        onImport={handleFeishuImport}
+      />
     </div>
   );
 }
