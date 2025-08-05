@@ -223,9 +223,11 @@ export default function DashboardPage() {
                         </p>
                       </div>
                       <div className="flex ml-4">
-                        <Button variant="outline" size="sm">
-                          继续编辑
-                        </Button>
+                        <Link href={`/editor/${article.id}`}>
+                          <Button variant="outline" size="sm">
+                            继续编辑
+                          </Button>
+                        </Link>
                       </div>
                     </div>
                   </CardContent>

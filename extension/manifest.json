@@ -26,7 +26,7 @@
         "https://mp.weixin.qq.com/*",
         "http://mp.weixin.qq.com/*"
       ],
-      "js": ["content_simple.js"],
+      "js": ["content.js"],
       "run_at": "document_end",
       "all_frames": false
     }

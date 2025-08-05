@@ -32,6 +32,15 @@ export function SimpleEditor({
   const [isPublishing, setIsPublishing] = useState(false);
   const [showFeishuImport, setShowFeishuImport] = useState(false);
 
+  // 当初始值改变时更新状态
+  useEffect(() => {
+    setTitle(initialTitle);
+  }, [initialTitle]);
+
+  useEffect(() => {
+    setContent(initialContent);
+  }, [initialContent]);
+
   // 计算统计信息
   const wordCount = countWords(content);
   const readingTime = calculateReadingTime(content);
