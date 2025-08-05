@@ -41,7 +41,7 @@ function parseFeishuContent(htmlContent: string): { title: string; markdown: str
 
 
 
-// 使用 turndown 库的简化转换函数
+// 使用 turndown 库的转换函数，针对飞书特殊结构进行优化
 function convertHtmlToMarkdownWithTurndown(html: string): string {
   // 创建 turndown 实例，使用默认配置
   const turndownService = new TurndownService({
@@ -56,17 +56,41 @@ function convertHtmlToMarkdownWithTurndown(html: string): string {
     linkReferenceStyle: 'full'
   });
 
-  // 简单的预处理：只清理飞书特有的属性
-  let cleanHtml = html
+  // 针对飞书特殊结构的预处理
+  let cleanHtml = html;
+
+  // 处理飞书特有的 white-space:pre 结构
+  // 这种结构通常包含用换行符分隔的多行内容，需要转换为正确的HTML结构
+  cleanHtml = cleanHtml.replace(
+    /<div[^>]*style="white-space:pre;"[^>]*>([\s\S]*?)<\/div>/g,
+    (_match, content: string) => {
+      // 将换行符转换为段落标签
+      const lines = content.split('\n').filter((line: string) => line.trim());
+      return lines.map((line: string) => `<p>${line.trim()}</p>`).join('');
+    }
+  );
+
+  // 处理飞书特有的包含 white-space:pre 样式的div结构（可能样式属性顺序不同）
+  cleanHtml = cleanHtml.replace(
+    /<div[^>]*white-space:\s*pre[^>]*>([\s\S]*?)<\/div>/g,
+    (_match, content: string) => {
+      // 将换行符转换为段落标签
+      const lines = content.split('\n').filter((line: string) => line.trim());
+      return lines.map((line: string) => `<p>${line.trim()}</p>`).join('');
+    }
+  );
+
+  // 清理飞书特有的属性
+  cleanHtml = cleanHtml
     .replace(/data-[^=]*="[^"]*"/g, '') // 移除data-*属性
     .replace(/style="[^"]*"/g, '') // 移除style属性
     .replace(/class="[^"]*"/g, '') // 移除class属性
     .replace(/id="[^"]*"/g, ''); // 移除id属性
 
-  // 直接使用 turndown 转换，不添加任何自定义规则
+  // 直接使用 turndown 转换
   let markdown = turndownService.turndown(cleanHtml);
 
-  // 最小化的后处理
+  // 后处理
   markdown = markdown
     .replace(/[ \t]+$/gm, '') // 移除行尾空白
     .replace(/\n{3,}/g, '\n\n') // 清理多余换行
