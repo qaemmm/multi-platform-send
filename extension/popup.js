@@ -17,6 +17,9 @@ document.addEventListener('DOMContentLoaded', function() {
   const refreshBtn = document.getElementById('refresh-articles');
   const searchInput = document.getElementById('search-input');
   const filterTabs = document.querySelectorAll('.filter-tab');
+  const fillProgress = document.getElementById('fill-progress');
+  const progressTitle = document.getElementById('progress-title');
+  const progressMessage = document.getElementById('progress-message');
 
   // 状态变量
   let currentTab = null;
@@ -40,6 +43,23 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(() => {
       fillSuccess.style.display = 'none';
     }, 3000);
+  }
+
+  // 显示进度消息
+  function showProgress(title, message) {
+    progressTitle.textContent = title;
+    progressMessage.textContent = message;
+    fillProgress.style.display = 'block';
+  }
+
+  // 隐藏进度消息
+  function hideProgress() {
+    fillProgress.style.display = 'none';
+  }
+
+  // 更新进度消息
+  function updateProgress(message) {
+    progressMessage.textContent = message;
   }
 
   // 显示认证错误
@@ -81,6 +101,7 @@ document.addEventListener('DOMContentLoaded', function() {
     articleList.style.display = 'none';
     fillSuccess.style.display = 'none';
     errorDiv.style.display = 'none';
+    fillProgress.style.display = 'none';
   }
 
   // 检查登录状态
@@ -274,6 +295,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // 发送填充消息的辅助函数
   function sendFillMessage(tabId, article) {
+    // 显示loading状态
+    showProgress('正在处理内容...', '正在准备文章内容');
+
     chrome.tabs.sendMessage(tabId, {
       action: 'fillContent',
       data: {
@@ -281,6 +305,9 @@ document.addEventListener('DOMContentLoaded', function() {
         content: article.content
       }
     }, (response) => {
+      // 隐藏loading状态
+      hideProgress();
+
       if (chrome.runtime.lastError) {
         showError('填充内容失败: ' + chrome.runtime.lastError.message);
       } else if (response && response.success) {
@@ -328,6 +355,13 @@ document.addEventListener('DOMContentLoaded', function() {
     // 已登录，检查当前页面
     checkCurrentPage();
   }
+
+  // 监听来自content script的进度更新
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === 'updateProgress') {
+      updateProgress(message.message);
+    }
+  });
 
   // 事件监听器
   openZiliuBtn.addEventListener('click', () => {
