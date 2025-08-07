@@ -26,6 +26,7 @@
     "@radix-ui/react-use-effect-event": "^0.0.2",
     "@radix-ui/react-use-layout-effect": "^1.1.1",
     "@types/turndown": "^5.0.5",
+    "@uiw/react-md-editor": "^4.0.8",
     "autoprefixer": "^10.4.21",
     "bcryptjs": "^3.0.2",
     "clsx": "^2.1.1",

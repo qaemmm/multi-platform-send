@@ -27,6 +27,8 @@ document.addEventListener('DOMContentLoaded', function() {
   let filteredArticles = [];
   let currentFilter = 'all';
   let searchQuery = '';
+  let presets = [];
+  let selectedPreset = null;
 
   // 显示错误消息
   function showError(message) {
@@ -139,6 +141,56 @@ document.addEventListener('DOMContentLoaded', function() {
       console.error('检查登录状态失败:', error);
       return false;
     }
+  }
+
+  // 获取预设列表
+  async function fetchPresets() {
+    try {
+      const response = await fetch('http://localhost:3000/api/presets', {
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        throw new Error('获取预设列表失败');
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        presets = data.data;
+        // 选择默认预设
+        selectedPreset = presets.find(p => p.isDefault) || presets[0] || null;
+        updatePresetSelector();
+        console.log('✅ 预设加载完成:', presets.length, '个预设');
+      }
+    } catch (error) {
+      console.error('获取预设列表失败:', error);
+    }
+  }
+
+  // 更新预设选择器
+  function updatePresetSelector() {
+    const presetSelector = document.getElementById('preset-selector');
+    if (!presetSelector) return;
+
+    presetSelector.innerHTML = '';
+
+    if (presets.length === 0) {
+      const option = document.createElement('option');
+      option.value = '';
+      option.textContent = '暂无预设';
+      presetSelector.appendChild(option);
+      return;
+    }
+
+    presets.forEach(preset => {
+      const option = document.createElement('option');
+      option.value = preset.id;
+      option.textContent = preset.name;
+      if (preset.id === selectedPreset?.id) {
+        option.selected = true;
+      }
+      presetSelector.appendChild(option);
+    });
   }
 
   // 获取文章列表
@@ -302,7 +354,8 @@ document.addEventListener('DOMContentLoaded', function() {
       action: 'fillContent',
       data: {
         title: article.title,
-        content: article.content
+        content: article.content,
+        preset: selectedPreset // 包含预设信息
       }
     }, (response) => {
       // 隐藏loading状态
@@ -328,6 +381,7 @@ document.addEventListener('DOMContentLoaded', function() {
           // 在公众号编辑器页面，显示文章列表
           hideAllViews();
           articleList.style.display = 'block';
+          fetchPresets(); // 获取预设
           fetchArticles();
         } else {
           // 不在公众号编辑器页面
@@ -390,6 +444,15 @@ document.addEventListener('DOMContentLoaded', function() {
       filterAndDisplayArticles();
     });
   });
+
+  // 预设选择器事件监听
+  const presetSelector = document.getElementById('preset-selector');
+  if (presetSelector) {
+    presetSelector.addEventListener('change', (e) => {
+      const presetId = e.target.value;
+      selectedPreset = presets.find(p => p.id === presetId) || null;
+    });
+  }
 
   // 启动初始化
   init();

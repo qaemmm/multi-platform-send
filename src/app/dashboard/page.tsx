@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { PlusCircle, FileText, Upload, History, LogOut, User } from 'lucide-react';
+import { PlusCircle, FileText, Upload, History, LogOut, User, Settings } from 'lucide-react';
 
 interface Article {
   id: string;
@@ -105,13 +105,46 @@ export default function DashboardPage() {
           <h2 className="text-3xl font-bold text-gray-900 mb-2">
             欢迎回来，{session.user?.name}！
           </h2>
-          <p className="text-gray-600">
+          <p className="text-gray-600 mb-4">
             开始创作您的下一篇文章，让文字如流水般顺畅发布
           </p>
+
+          {/* 新功能提示 */}
+          <div className="new-feature-tip bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <div className="p-1 bg-orange-100 rounded-lg">
+                <Settings className="h-5 w-5 text-orange-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-gray-900 mb-1">
+                  🎉 新功能：发布预设
+                </h3>
+                <p className="text-sm text-gray-600 mb-3">
+                  创建发布预设，一键填充作者信息、原创设置等重复内容，大幅提升发布效率！
+                </p>
+                <div className="flex gap-2">
+                  <Link href="/dashboard/presets">
+                    <button className="text-sm bg-orange-600 text-white px-3 py-1 rounded-md hover:bg-orange-700 transition-colors">
+                      立即体验
+                    </button>
+                  </Link>
+                  <button
+                    onClick={() => {
+                      const tip = document.querySelector('.new-feature-tip');
+                      if (tip) tip.style.display = 'none';
+                    }}
+                    className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                  >
+                    稍后再说
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Quick Actions */}
-        <div className="grid md:grid-cols-3 gap-6 mb-8">
+        <div className="grid md:grid-cols-4 gap-6 mb-8">
           <Card className="hover:shadow-md transition-shadow cursor-pointer">
             <CardHeader>
               <div className="flex items-center space-x-2">
@@ -126,6 +159,34 @@ export default function DashboardPage() {
               <Link href="/editor/new">
                 <Button className="w-full">
                   开始创作
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-md transition-shadow cursor-pointer border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50">
+            <CardHeader>
+              <div className="flex items-center space-x-2">
+                <div className="p-1 bg-orange-100 rounded-lg">
+                  <Settings className="h-5 w-5 text-orange-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    发布预设
+                    <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full font-medium">
+                      新功能
+                    </span>
+                  </CardTitle>
+                </div>
+              </div>
+              <CardDescription>
+                管理发布预设，一键填充重复信息，大幅提升发布效率
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Link href="/dashboard/presets">
+                <Button className="w-full bg-orange-600 hover:bg-orange-700 text-white">
+                  管理预设
                 </Button>
               </Link>
             </CardContent>
