@@ -5,17 +5,38 @@ console.log('🚀 字流助手已加载');
 document.documentElement.setAttribute('data-ziliu-loaded', 'true');
 window.ziLiuExtensionLoaded = true;
 
-// 查找微信公众号编辑器
-function findWeChatEditor() {
-  // 只关注ProseMirror编辑器（微信当前使用的编辑器）
-  const proseMirror = document.querySelector('#ueditor_0 .ProseMirror');
-  if (proseMirror && proseMirror.contentEditable === 'true') {
-    console.log('✅ 找到微信ProseMirror编辑器');
-    return proseMirror;
-  }
+// 查找微信公众号编辑器元素（简化版本）
+function findWeChatEditorElements() {
+  const elements = {
+    titleInput: null,
+    authorInput: null,
+    contentEditor: null,
+    digestInput: null
+  };
 
-  console.log('❌ 未找到微信编辑器');
-  return null;
+  // 查找标题输入框
+  elements.titleInput = document.querySelector('input[placeholder="请在这里输入标题"]');
+
+  // 查找作者输入框
+  elements.authorInput = document.querySelector('input[placeholder="请输入作者"]');
+
+  // 查找正文编辑器
+  elements.contentEditor = document.querySelector('[contenteditable="true"]') ||
+                          Array.from(document.querySelectorAll('*')).find(el =>
+                            el.textContent && el.textContent.includes('从这里开始写正文'));
+
+  // 查找摘要输入框
+  elements.digestInput = document.querySelector('textarea[placeholder*="选填"]') ||
+                        document.querySelector('textarea[placeholder*="摘要"]');
+
+  console.log('🔍 微信编辑器元素查找结果:', {
+    标题输入框: !!elements.titleInput,
+    作者输入框: !!elements.authorInput,
+    正文编辑器: !!elements.contentEditor,
+    摘要输入框: !!elements.digestInput
+  });
+
+  return elements;
 }
 
 // 获取当前页面的token
@@ -220,22 +241,17 @@ async function fillContent(editor, content) {
 // 填充标题
 async function fillTitle(title) {
   try {
-    const titleElement = document.querySelector('.js_title') ||
-                        document.querySelector('#js_title') ||
-                        document.querySelector('[placeholder*="标题"]');
+    const elements = findWeChatEditorElements();
 
-    if (titleElement) {
-      if (titleElement.tagName === 'INPUT' || titleElement.tagName === 'TEXTAREA') {
-        titleElement.value = title;
-      } else {
-        titleElement.textContent = title;
-      }
-      titleElement.dispatchEvent(new Event('input', { bubbles: true }));
-      console.log('✅ 标题填充完成');
+    if (elements.titleInput && title) {
+      elements.titleInput.value = title;
+      elements.titleInput.dispatchEvent(new Event('input', { bubbles: true }));
+      elements.titleInput.dispatchEvent(new Event('change', { bubbles: true }));
+      console.log('✅ 标题填充完成:', title);
       return true;
     }
 
-    console.log('⚠️ 未找到标题元素');
+    console.log('⚠️ 未找到标题输入框或标题为空');
     return false;
   } catch (error) {
     console.error('❌ 标题填充失败:', error);
@@ -268,26 +284,23 @@ async function fillAuthor(authorName) {
   }
 }
 
-// 设置原创状态
-async function setOriginalStatus(isOriginal) {
+// 填充摘要信息
+async function fillDigest(digest) {
   try {
-    // 查找原创复选框
-    const originalCheckbox = document.querySelector('input[type="checkbox"]#original') ||
-                            document.querySelector('input[type="checkbox"][name*="original"]') ||
-                            document.querySelector('.js_original input[type="checkbox"]');
+    const elements = findWeChatEditorElements();
 
-    if (originalCheckbox) {
-      if (originalCheckbox.checked !== isOriginal) {
-        originalCheckbox.click();
-        console.log('✅ 原创状态设置完成:', isOriginal ? '原创' : '非原创');
-      }
+    if (elements.digestInput && digest) {
+      elements.digestInput.value = digest;
+      elements.digestInput.dispatchEvent(new Event('input', { bubbles: true }));
+      elements.digestInput.dispatchEvent(new Event('change', { bubbles: true }));
+      console.log('✅ 摘要填充完成:', digest);
       return true;
     }
 
-    console.log('⚠️ 未找到原创复选框');
+    console.log('⚠️ 未找到摘要输入框或摘要为空');
     return false;
   } catch (error) {
-    console.error('❌ 原创状态设置失败:', error);
+    console.error('❌ 摘要填充失败:', error);
     return false;
   }
 }
@@ -311,7 +324,7 @@ function generateWechatRecommendationHTML(accountName) {
   return `\n\n<hr>\n<p>📱 <strong>推荐关注：${accountName}</strong> - 插件将自动插入公众号卡片</p>\n`;
 }
 
-// 应用预设设置
+// 应用预设设置（简化版本）
 async function applyPresetSettings(preset) {
   if (!preset) {
     console.log('⚠️ 没有预设信息，跳过预设应用');
@@ -321,23 +334,21 @@ async function applyPresetSettings(preset) {
   console.log('🔧 开始应用预设设置:', preset.name);
 
   try {
-    // 填充作者信息
-    if (preset.authorName) {
-      await fillAuthor(preset.authorName);
-      await new Promise(resolve => setTimeout(resolve, 200));
-    }
+    // 获取编辑器元素
+    const elements = findWeChatEditorElements();
 
-    // 设置原创状态
-    await setOriginalStatus(preset.isOriginal);
-    await new Promise(resolve => setTimeout(resolve, 200));
+    // 1. 填充作者信息
+    if (preset.authorName && elements.authorInput) {
+      elements.authorInput.value = preset.authorName;
+      elements.authorInput.dispatchEvent(new Event('input', { bubbles: true }));
+      elements.authorInput.dispatchEvent(new Event('change', { bubbles: true }));
+      console.log('✅ 作者信息填充完成:', preset.authorName);
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
 
     console.log('✅ 预设设置应用完成');
     console.log('📝 预设详情:', {
-      作者: preset.authorName,
-      原创: preset.isOriginal ? '是' : '否',
-      赞赏: preset.enableReward ? '开启' : '关闭',
-      自动封面: preset.autoSelectCover ? '是' : '否',
-      自动摘要: preset.autoGenerateDigest ? '是' : '否',
+      作者: preset.authorName || '未设置',
       精选文章: preset.enableFeaturedArticles ? '启用' : '关闭',
       定制内容: preset.customContent ? '已设置' : '未设置',
       推荐公众号: preset.recommendedAccount || '未设置'
@@ -372,13 +383,26 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
         // 填充标题
         if (title) {
-          await fillTitle(title);
+          const titleSuccess = await fillTitle(title);
+          if (!titleSuccess) {
+            console.log('⚠️ 标题填充失败，但继续处理其他内容');
+          }
+        }
+
+        // 填充摘要（如果预设启用了自动摘要生成）
+        if (preset && preset.autoGenerateDigest && content) {
+          // 自动生成摘要（取正文前120个字符）
+          const autoDigest = content.replace(/<[^>]*>/g, '').substring(0, 120) + '...';
+          const digestSuccess = await fillDigest(autoDigest);
+          if (!digestSuccess) {
+            console.log('⚠️ 摘要填充失败，但继续处理其他内容');
+          }
         }
 
         // 填充内容（包含预设增强内容）
         if (content) {
-          const editor = findWeChatEditor();
-          if (editor) {
+          const elements = findWeChatEditorElements();
+          if (elements.contentEditor) {
             // 构建完整内容
             let fullContent = content;
 
@@ -400,7 +424,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
               }
             }
 
-            success = await fillContent(editor, fullContent);
+            success = await fillContent(elements.contentEditor, fullContent);
             message = success ? '填充成功（包含预设增强内容）' : '填充失败';
           } else {
             console.log('❌ 未找到编辑器');
