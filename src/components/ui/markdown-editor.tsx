@@ -225,8 +225,9 @@ export function MarkdownEditor({ value, onChange, placeholder, className = '', l
 
       {/* 帮助提示 */}
       <div className="border-t border-gray-200 p-2 text-xs text-gray-500">
-        💡 支持Markdown语法：**粗体**、*斜体*、[链接](url)、![图片](url)、&gt; 引用、- 列表等
-        {!showPreview && ' | 精选文章占位符：{{featured-articles:数量}}'}
+        <span>💡 支持Markdown语法：</span>
+        <span>**粗体**、*斜体*、[链接](url)、![图片](url)、{`>`} 引用、- 列表等</span>
+        {!showPreview && <span> | 精选文章占位符：{`{{featured-articles:数量}}`}</span>}
       </div>
     </div>
   );
