@@ -23,7 +23,7 @@ function findWeChatEditorElements() {
 async function uploadImageToWeChat(imageUrl) {
   try {
     console.log(`🔄 开始转换图片: ${imageUrl}`);
-
+    
     const response = await fetch('https://mp.weixin.qq.com/cgi-bin/uploadimg2cdn?action=upload_img&f=json', {
       method: 'POST',
       headers: {
@@ -116,18 +116,18 @@ async function fillContent(elements, data) {
     if (elements.contentEditor && data.content) {
       console.log('🔄 开始处理图片...');
       const processedContent = await convertImagesInContent(data.content);
-
+      
       console.log('🔧 开始填充正文...');
-
+      
       // 直接设置 innerHTML - 这是最简单有效的方法
       elements.contentEditor.innerHTML = processedContent;
-
+      
       // 触发必要的事件让编辑器知道内容已更改
       const events = ['input', 'keyup', 'change'];
       events.forEach(type => {
         elements.contentEditor.dispatchEvent(new Event(type, { bubbles: true }));
       });
-
+      
       console.log('✅ 正文填充完成');
     }
 
@@ -149,7 +149,7 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
 
   if (request.action === 'fillContent') {
     const elements = findWeChatEditorElements();
-
+    
     if (!elements.isWeChatEditor) {
       sendResponse({ success: false, error: '当前页面不是微信公众号编辑器' });
       return;

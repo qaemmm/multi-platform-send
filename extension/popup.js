@@ -313,6 +313,28 @@ document.addEventListener('DOMContentLoaded', function() {
       }
 
       const article = data.data;
+      // 统一与站点“复制到公众号”逻辑：再走一次 convert-inline，保证风格与预览一致
+      let htmlToFill = article.content;
+      try {
+        const convResp = await fetch('http://localhost:3000/api/convert-inline', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ content: article.originalContent || '', platform: 'wechat', style: article.style || 'default' })
+        });
+        const convData = await convResp.json();
+        if (convData?.success && convData.data?.inlineHtml) {
+          htmlToFill = convData.data.inlineHtml;
+          console.log('✅ 使用 convert-inline 生成内联 HTML');
+        } else {
+          console.warn('⚠️ convert-inline 返回异常，回退使用接口内联内容');
+        }
+      } catch (e) {
+        console.warn('⚠️ 调用 convert-inline 失败，回退使用接口内联内容:', e);
+      }
+
+      // 将最终 HTML 附加到对象，供 sendFillMessage 使用
+      article.__inlineHtml = htmlToFill;
 
       // 首先检查content script是否已加载
       chrome.tabs.sendMessage(tab.id, { action: 'ping' }, (response) => {
@@ -328,10 +350,10 @@ document.addEventListener('DOMContentLoaded', function() {
               return;
             }
 
-            // 等待脚本加载完成后再发送消息
+            // 等待脚本加载完成后再发送消息，增加等待时间确保完全加载
             setTimeout(() => {
               sendFillMessage(tab.id, article);
-            }, 500);
+            }, 1000);
           });
         } else {
           // Content script已加载，直接发送消息
@@ -354,7 +376,7 @@ document.addEventListener('DOMContentLoaded', function() {
       action: 'fillContent',
       data: {
         title: article.title,
-        content: article.content,
+        content: article.__inlineHtml || article.content,
         preset: selectedPreset // 包含预设信息
       }
     }, (response) => {

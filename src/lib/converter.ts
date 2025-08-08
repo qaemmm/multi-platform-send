@@ -387,6 +387,16 @@ function preprocessHtmlForWechat(html: string): string {
     }
   );
 
+  // 2.5 兼容微信公众号：将 h1/h2/h3 转为等价的 p + span 内联样式，避免 h 标签被剥离
+  const h1Style = 'margin: 24px 0 16px 0; font-size: 24px; font-weight: 600; color: #2c3e50; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;';
+  const h2Style = 'margin: 20px 0 12px 0; font-size: 20px; font-weight: 600; color: #34495e; border-left: 4px solid #3498db; padding-left: 12px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;';
+  const h3Style = 'margin: 16px 0 8px 0; font-size: 18px; font-weight: 600; color: #2c3e50; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;';
+
+  processedHtml = processedHtml
+    .replace(/<h1[^>]*>([\s\S]*?)<\/h1>/gi, (_m, text) => `<p style="${h1Style}"><span style="${h1Style}">${text}</span></p>`)
+    .replace(/<h2[^>]*>([\s\S]*?)<\/h2>/gi, (_m, text) => `<p style="${h2Style}"><span style="${h2Style}">${text}</span></p>`)
+    .replace(/<h3[^>]*>([\s\S]*?)<\/h3>/gi, (_m, text) => `<p style="${h3Style}"><span style="${h3Style}">${text}</span></p>`);
+
   // 3. 修复行内代码的空格问题
   processedHtml = processedHtml.replace(
     /<code>([^<]+)<\/code>/g,
@@ -409,60 +419,67 @@ function preprocessHtmlForWechat(html: string): string {
     .replace(/<section[^>]*>/g, '<div>')
     .replace(/<\/section>/g, '</div>');
 
+  // 6. 将 <hr> 转换为安全的分割线容器
+  processedHtml = processedHtml.replace(/<hr\s*\/?>/gi, '<div style="margin: 24px 0; border-top: 1px solid #e5e7eb;"></div>');
+
   return processedHtml;
 }
 
-// 获取内联样式映射
+// 获取内联样式映射 - 优化微信编辑器兼容性
 function getInlineStylesForWechat(styleKey: keyof typeof WECHAT_STYLES) {
+  // 微信编辑器兼容的字体栈
+  const wechatFontFamily = 'mp-quote, -apple-system, BlinkMacSystemFont, "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei", Arial, sans-serif';
+  const wechatCodeFontFamily = '"SF Mono", Monaco, Consolas, "Liberation Mono", "Courier New", monospace';
+
   const baseStyles = {
     default: {
-      h1: 'color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 8px; margin: 24px 0 16px 0; font-size: 24px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;',
-      h2: 'color: #34495e; border-left: 4px solid #3498db; padding-left: 12px; margin: 20px 0 12px 0; font-size: 20px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;',
-      h3: 'color: #2c3e50; margin: 16px 0 8px 0; font-size: 18px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;',
-      p: 'margin: 16px 0; text-align: justify; font-size: 16px; line-height: 1.8; color: #333; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;',
-      code: 'background: #f8f9fa; padding: 2px 6px; border-radius: 3px; font-family: "SF Mono", Monaco, "Cascadia Code", monospace; color: #e74c3c; font-size: 14px; white-space: pre-wrap;',
-      pre: 'background: #f8f9fa; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 16px 0; border-left: 4px solid #3498db; font-family: "SF Mono", Monaco, "Cascadia Code", monospace; white-space: pre-wrap;',
-      blockquote: 'border-left: 4px solid #bdc3c7; padding: 12px 16px; margin: 16px 0; color: #7f8c8d; font-style: italic; background: #f9f9f9; border-radius: 4px;',
-      ul: 'margin: 16px 0; padding-left: 24px; list-style-type: disc;',
-      ol: 'margin: 16px 0; padding-left: 24px; list-style-type: decimal;',
-      li: 'margin: 8px 0; line-height: 1.6;',
-      strong: 'font-weight: 600; color: #2c3e50;',
-      em: 'font-style: italic; color: #34495e;'
+      h1: `color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 8px; margin: 24px 0 16px 0; font-size: 24px; font-weight: 600; line-height: 1.4; font-family: ${wechatFontFamily}; display: block;`,
+      h2: `color: #34495e; border-left: 4px solid #3498db; padding-left: 12px; margin: 20px 0 12px 0; font-size: 20px; font-weight: 600; line-height: 1.4; font-family: ${wechatFontFamily}; display: block;`,
+      h3: `color: #2c3e50; margin: 16px 0 8px 0; font-size: 18px; font-weight: 600; line-height: 1.4; font-family: ${wechatFontFamily}; display: block;`,
+      p: `margin: 16px 0; text-align: justify; font-size: 16px; line-height: 1.8; color: #333333; font-family: ${wechatFontFamily}; word-wrap: break-word; word-break: break-all;`,
+      code: `background-color: #f8f9fa; padding: 2px 6px; border-radius: 3px; font-family: ${wechatCodeFontFamily}; color: #e74c3c; font-size: 14px; white-space: pre-wrap; display: inline;`,
+      pre: `background-color: #f8f9fa; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 16px 0; border-left: 4px solid #3498db; font-family: ${wechatCodeFontFamily}; white-space: pre-wrap; display: block;`,
+      blockquote: `border-left: 4px solid #bdc3c7; padding: 12px 16px; margin: 16px 0; color: #7f8c8d; font-style: italic; background-color: #f9f9f9; border-radius: 4px; display: block;`,
+      ul: `margin: 16px 0; padding-left: 24px; list-style-type: disc; font-family: ${wechatFontFamily};`,
+      ol: `margin: 16px 0; padding-left: 24px; list-style-type: decimal; font-family: ${wechatFontFamily};`,
+      li: `margin: 8px 0; line-height: 1.6; font-family: ${wechatFontFamily};`,
+      strong: `font-weight: 600; color: #2c3e50; font-family: ${wechatFontFamily};`,
+      em: `font-style: italic; color: #34495e; font-family: ${wechatFontFamily};`
     },
     tech: {
-      h1: 'background: linear-gradient(45deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 16px; border-radius: 8px; margin: 24px 0 16px 0; font-size: 24px; font-family: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", monospace;',
-      h2: 'color: #667eea; border-bottom: 2px solid #667eea; padding-bottom: 8px; margin: 20px 0 12px 0; font-size: 20px; font-family: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", monospace;',
-      h3: 'color: #764ba2; margin: 16px 0 8px 0; font-size: 18px; font-family: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", monospace;',
-      p: 'margin: 16px 0; font-size: 16px; line-height: 1.8; color: #2c3e50; font-family: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", monospace;',
-      code: 'background: #282c34; color: #abb2bf; padding: 2px 6px; border-radius: 4px; font-size: 14px; font-family: "SF Mono", Monaco, "Cascadia Code", monospace; white-space: pre-wrap;',
-      pre: 'background: #282c34; color: #abb2bf; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 16px 0; font-family: "SF Mono", Monaco, "Cascadia Code", monospace; white-space: pre-wrap;',
-      blockquote: 'border-left: 4px solid #667eea; padding: 12px 16px; margin: 16px 0; color: #7f8c8d; background: #f8f9ff; border-radius: 4px;',
-      ul: 'margin: 16px 0; padding-left: 24px; list-style-type: disc;',
-      ol: 'margin: 16px 0; padding-left: 24px; list-style-type: decimal;',
-      li: 'margin: 8px 0; line-height: 1.6;',
-      strong: 'font-weight: 600; color: #667eea;',
-      em: 'font-style: italic; color: #764ba2;'
+      h1: `background: linear-gradient(45deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 16px; border-radius: 8px; margin: 24px 0 16px 0; font-size: 24px; line-height: 1.4; font-family: ${wechatCodeFontFamily}; display: block;`,
+      h2: `color: #667eea; border-bottom: 2px solid #667eea; padding-bottom: 8px; margin: 20px 0 12px 0; font-size: 20px; line-height: 1.4; font-family: ${wechatCodeFontFamily}; display: block;`,
+      h3: `color: #764ba2; margin: 16px 0 8px 0; font-size: 18px; line-height: 1.4; font-family: ${wechatCodeFontFamily}; display: block;`,
+      p: `margin: 16px 0; font-size: 16px; line-height: 1.8; color: #2c3e50; font-family: ${wechatCodeFontFamily}; word-wrap: break-word; word-break: break-all;`,
+      code: `background-color: #282c34; color: #abb2bf; padding: 2px 6px; border-radius: 4px; font-size: 14px; font-family: ${wechatCodeFontFamily}; white-space: pre-wrap; display: inline;`,
+      pre: `background-color: #282c34; color: #abb2bf; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 16px 0; font-family: ${wechatCodeFontFamily}; white-space: pre-wrap; display: block;`,
+      blockquote: `border-left: 4px solid #667eea; padding: 12px 16px; margin: 16px 0; color: #7f8c8d; background-color: #f8f9ff; border-radius: 4px; display: block;`,
+      ul: `margin: 16px 0; padding-left: 24px; list-style-type: disc; font-family: ${wechatCodeFontFamily};`,
+      ol: `margin: 16px 0; padding-left: 24px; list-style-type: decimal; font-family: ${wechatCodeFontFamily};`,
+      li: `margin: 8px 0; line-height: 1.6; font-family: ${wechatCodeFontFamily};`,
+      strong: `font-weight: 600; color: #667eea; font-family: ${wechatCodeFontFamily};`,
+      em: `font-style: italic; color: #764ba2; font-family: ${wechatCodeFontFamily};`
     },
     minimal: {
-      h1: 'font-weight: 300; color: #2c3e50; margin: 32px 0 16px 0; font-size: 28px; text-align: center; font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;',
-      h2: 'font-weight: 400; color: #34495e; margin: 24px 0 12px 0; font-size: 22px; font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;',
-      h3: 'font-weight: 400; color: #2c3e50; margin: 20px 0 8px 0; font-size: 18px; font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;',
-      p: 'color: #555; margin: 20px 0; font-size: 16px; text-align: justify; line-height: 2; font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;',
-      code: 'background: #f5f5f5; padding: 2px 4px; border-radius: 2px; font-size: 14px; color: #666; font-family: monospace; white-space: pre-wrap;',
-      pre: 'background: #fafafa; padding: 20px; border-radius: 4px; margin: 20px 0; border: 1px solid #eee; font-family: monospace; white-space: pre-wrap;',
-      blockquote: 'border-left: 2px solid #ddd; padding-left: 20px; margin: 20px 0; color: #666; font-style: normal;',
-      ul: 'margin: 20px 0; padding-left: 24px; list-style-type: disc;',
-      ol: 'margin: 20px 0; padding-left: 24px; list-style-type: decimal;',
-      li: 'margin: 8px 0; line-height: 1.8;',
-      strong: 'font-weight: 600; color: #2c3e50;',
-      em: 'font-style: italic; color: #555;'
+      h1: `font-weight: 300; color: #2c3e50; margin: 32px 0 16px 0; font-size: 28px; text-align: center; line-height: 1.4; font-family: ${wechatFontFamily}; display: block;`,
+      h2: `font-weight: 400; color: #34495e; margin: 24px 0 12px 0; font-size: 22px; line-height: 1.4; font-family: ${wechatFontFamily}; display: block;`,
+      h3: `font-weight: 400; color: #2c3e50; margin: 20px 0 8px 0; font-size: 18px; line-height: 1.4; font-family: ${wechatFontFamily}; display: block;`,
+      p: `color: #555555; margin: 20px 0; font-size: 16px; text-align: justify; line-height: 2; font-family: ${wechatFontFamily}; word-wrap: break-word; word-break: break-all;`,
+      code: `background-color: #f5f5f5; padding: 2px 4px; border-radius: 2px; font-size: 14px; color: #666666; font-family: ${wechatCodeFontFamily}; white-space: pre-wrap; display: inline;`,
+      pre: `background-color: #fafafa; padding: 20px; border-radius: 4px; margin: 20px 0; border: 1px solid #eeeeee; font-family: ${wechatCodeFontFamily}; white-space: pre-wrap; display: block;`,
+      blockquote: `border-left: 2px solid #dddddd; padding-left: 20px; margin: 20px 0; color: #666666; font-style: normal; display: block;`,
+      ul: `margin: 20px 0; padding-left: 24px; list-style-type: disc; font-family: ${wechatFontFamily};`,
+      ol: `margin: 20px 0; padding-left: 24px; list-style-type: decimal; font-family: ${wechatFontFamily};`,
+      li: `margin: 8px 0; line-height: 1.8; font-family: ${wechatFontFamily};`,
+      strong: `font-weight: 600; color: #2c3e50; font-family: ${wechatFontFamily};`,
+      em: `font-style: italic; color: #555555; font-family: ${wechatFontFamily};`
     }
   };
 
   return baseStyles[styleKey];
 }
 
-// 应用内联样式到HTML
+// 应用内联样式到HTML - 优化微信编辑器兼容性
 function applyInlineStyles(html: string, styles: Record<string, string>): string {
   let styledHtml = html;
 
@@ -470,13 +487,20 @@ function applyInlineStyles(html: string, styles: Record<string, string>): string
   Object.entries(styles).forEach(([tag, style]) => {
     const regex = new RegExp(`<${tag}([^>]*)>`, 'gi');
     styledHtml = styledHtml.replace(regex, (match, attributes) => {
+      // 清理和规范化样式
+      const cleanStyle = style.replace(/\s+/g, ' ').trim();
+
       // 如果已有style属性，合并样式
       if (attributes && attributes.includes('style=')) {
-        return match.replace(/style="([^"]*)"/, `style="$1; ${style}"`);
+        return match.replace(/style="([^"]*)"/, (_, existingStyle) => {
+          // 合并样式，新样式优先
+          const mergedStyle = `${existingStyle.trim()}; ${cleanStyle}`.replace(/;\s*;/g, ';');
+          return `style="${mergedStyle}"`;
+        });
       } else {
-        // 添加新的style属性，确保有空格分隔
+        // 添加新的style属性
         const cleanAttributes = attributes || '';
-        return `<${tag}${cleanAttributes} style="${style}">`;
+        return `<${tag}${cleanAttributes} style="${cleanStyle}">`;
       }
     });
   });
@@ -484,9 +508,9 @@ function applyInlineStyles(html: string, styles: Record<string, string>): string
   // 特殊处理pre中的code标签，确保代码块样式正确
   styledHtml = styledHtml.replace(
     /<pre([^>]*)><code([^>]*)>/gi,
-    (match, preAttrs, codeAttrs) => {
+    (_, preAttrs, codeAttrs) => {
       // 为pre中的code标签添加特殊样式，确保换行和空格保持
-      const codeStyle = 'background: none; padding: 0; color: inherit; white-space: pre-wrap; font-family: inherit;';
+      const codeStyle = 'background-color: transparent; padding: 0; color: inherit; white-space: pre-wrap; font-family: inherit; display: inline;';
 
       if (codeAttrs && codeAttrs.includes('style=')) {
         const updatedCodeAttrs = codeAttrs.replace(/style="([^"]*)"/, `style="$1; ${codeStyle}"`);
@@ -497,9 +521,21 @@ function applyInlineStyles(html: string, styles: Record<string, string>): string
     }
   );
 
-  // 确保所有段落都有segoe属性（微信编辑器需要）
-  styledHtml = styledHtml.replace(/<p([^>]*style="[^"]*")([^>]*)>/gi, '$&'.replace('>', ' segoe="">'));
-  styledHtml = styledHtml.replace(/<h([1-6])([^>]*style="[^"]*")([^>]*)>/gi, '$&'.replace('>', ' segoe="">'));
+  // 添加微信编辑器需要的属性
+  styledHtml = styledHtml.replace(/<p([^>]*style="[^"]*")([^>]*)>/gi, (match) => {
+    if (!match.includes('data-tools=')) {
+      return match.replace('>', ' data-tools="135editor">');
+    }
+    return match;
+  });
+
+  // 确保图片有正确的样式
+  styledHtml = styledHtml.replace(/<img([^>]*)>/gi, (match, attrs) => {
+    if (!attrs.includes('style=')) {
+      return `<img${attrs} style="max-width: 100%; height: auto; display: block; margin: 16px auto;">`;
+    }
+    return match;
+  });
 
   return styledHtml;
 }
