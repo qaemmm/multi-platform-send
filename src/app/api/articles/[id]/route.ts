@@ -39,9 +39,10 @@ export async function OPTIONS(request: NextRequest) {
 // 获取单个文章详情
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: articleId } = await context.params;
     const session = await getServerSession();
     if (!session?.user?.id) {
       const response = NextResponse.json({
@@ -52,7 +53,7 @@ export async function GET(
       return setCorsHeaders(response, request);
     }
 
-    const articleId = params.id;
+    // articleId already read from awaited params above
 
     // 查询文章
     const article = await db.query.articles.findFirst({
@@ -83,7 +84,7 @@ export async function GET(
       // 生成带内联样式的HTML，用于公众号编辑器
       try {
         processedContent = convertToWechatInline(
-          article.content, 
+          article.content,
           style as keyof typeof WECHAT_STYLES
         );
       } catch (error) {
@@ -115,7 +116,7 @@ export async function GET(
 
   } catch (error) {
     console.error('获取文章详情失败:', error);
-    
+
     const response = NextResponse.json({
       success: false,
       error: '获取文章详情失败',
@@ -128,9 +129,10 @@ export async function GET(
 // 更新文章
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: articleId } = await context.params;
     const session = await getServerSession();
     if (!session?.user?.id) {
       const response = NextResponse.json({
@@ -140,7 +142,6 @@ export async function PUT(
       return setCorsHeaders(response, request);
     }
 
-    const articleId = params.id;
     const body = await request.json();
     const { title, content, status } = body;
 
@@ -180,7 +181,7 @@ export async function PUT(
 
   } catch (error) {
     console.error('更新文章失败:', error);
-    
+
     const response = NextResponse.json({
       success: false,
       error: '更新文章失败',
@@ -192,9 +193,10 @@ export async function PUT(
 // 删除文章
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: articleId } = await context.params;
     const session = await getServerSession();
     if (!session?.user?.id) {
       const response = NextResponse.json({
@@ -204,7 +206,6 @@ export async function DELETE(
       return setCorsHeaders(response, request);
     }
 
-    const articleId = params.id;
 
     // 验证文章是否存在且属于当前用户
     const existingArticle = await db.query.articles.findFirst({
@@ -233,7 +234,7 @@ export async function DELETE(
 
   } catch (error) {
     console.error('删除文章失败:', error);
-    
+
     const response = NextResponse.json({
       success: false,
       error: '删除文章失败',

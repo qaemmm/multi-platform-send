@@ -21,7 +21,7 @@ export function MarkdownEditor({ value, onChange, placeholder, className = '', l
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
     const selectedText = value.substring(start, end);
-    
+
     const newText = value.substring(0, start) + before + selectedText + after + value.substring(end);
     onChange(newText);
 
@@ -86,10 +86,10 @@ export function MarkdownEditor({ value, onChange, placeholder, className = '', l
     {
       name: '个人介绍',
       content: `> 👋 **关于作者**
-> 
+>
 > 我是 **你的名字**，专注于前端技术分享
-> 
-> 📧 联系我：your-email@example.com  
+>
+> 📧 联系我：your-email@example.com
 > 🔗 个人网站：[your-website.com](https://your-website.com)`
     },
     {
@@ -114,9 +114,11 @@ export function MarkdownEditor({ value, onChange, placeholder, className = '', l
     },
     {
       name: '精选文章',
-      content: `{{featured-articles:5}}
+      content: `---
 
-*以上是系统智能推荐的相关文章*`
+### 📚 精选文章
+
+{{featured-articles:10}}`
     }
   ];
 
@@ -132,7 +134,7 @@ export function MarkdownEditor({ value, onChange, placeholder, className = '', l
       .replace(/^1\. (.+)$/gm, '<li>$1</li>')
       .replace(/^---$/gm, '<hr>')
       .replace(/\n/g, '<br>')
-      .replace(/{{featured-articles:(\d+)}}/g, '<div style="border: 2px dashed #3b82f6; padding: 12px; border-radius: 8px; background: #eff6ff; color: #1d4ed8;"><strong>📚 精选文章推荐 (显示$1篇)</strong><br><small>插件会智能匹配相关文章并插入到此位置</small></div>');
+      .replace(/{{featured-articles:(\d+)}}/g, '<div class="featured-articles" data-count="$1" style="border: 1px dashed #d1d5db; padding: 12px; border-radius: 8px; color: #6b7280; font-size: 14px;">（将展示 $1 篇精选文章）</div>');
   };
 
   return (
@@ -177,7 +179,7 @@ export function MarkdownEditor({ value, onChange, placeholder, className = '', l
                 <button.icon className="w-4 h-4" />
               </button>
             ))}
-            
+
             {/* 模板选择 */}
             <div className="ml-auto">
               <select
@@ -214,10 +216,10 @@ export function MarkdownEditor({ value, onChange, placeholder, className = '', l
       ) : (
         /* 预览区域 */
         <div className="p-3 min-h-48">
-          <div 
+          <div
             className="prose prose-sm max-w-none"
-            dangerouslySetInnerHTML={{ 
-              __html: value ? markdownToHtml(value) : '<p class="text-gray-400">暂无内容</p>' 
+            dangerouslySetInnerHTML={{
+              __html: value ? markdownToHtml(value) : '<p class="text-gray-400">暂无内容</p>'
             }}
           />
         </div>

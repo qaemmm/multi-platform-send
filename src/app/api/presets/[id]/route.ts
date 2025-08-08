@@ -8,9 +8,10 @@ import { eq, and } from 'drizzle-orm';
 // 获取单个预设
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await context.params;
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return NextResponse.json({
@@ -34,7 +35,7 @@ export async function GET(
     // 获取预设
     const preset = await db.query.publishPresets.findFirst({
       where: and(
-        eq(publishPresets.id, params.id),
+        eq(publishPresets.id, id),
         eq(publishPresets.userId, user.id)
       ),
     });
@@ -62,9 +63,10 @@ export async function GET(
 // 更新预设
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await context.params;
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return NextResponse.json({
@@ -88,7 +90,7 @@ export async function PUT(
     // 检查预设是否存在
     const existingPreset = await db.query.publishPresets.findFirst({
       where: and(
-        eq(publishPresets.id, params.id),
+        eq(publishPresets.id, id),
         eq(publishPresets.userId, user.id)
       ),
     });
@@ -116,7 +118,7 @@ export async function PUT(
         .set({ isDefault: false })
         .where(and(
           eq(publishPresets.userId, user.id),
-          eq(publishPresets.id, params.id)
+          eq(publishPresets.id, id)
         ));
     }
 
@@ -132,13 +134,13 @@ export async function PUT(
         updatedAt: new Date(),
       })
       .where(and(
-        eq(publishPresets.id, params.id),
+        eq(publishPresets.id, id),
         eq(publishPresets.userId, user.id)
       ));
 
     // 获取更新后的预设
     const updatedPreset = await db.query.publishPresets.findFirst({
-      where: eq(publishPresets.id, params.id),
+      where: eq(publishPresets.id, id),
     });
 
     return NextResponse.json({
@@ -158,9 +160,10 @@ export async function PUT(
 // 删除预设
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await context.params;
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return NextResponse.json({
@@ -184,7 +187,7 @@ export async function DELETE(
     // 检查预设是否存在
     const existingPreset = await db.query.publishPresets.findFirst({
       where: and(
-        eq(publishPresets.id, params.id),
+        eq(publishPresets.id, id),
         eq(publishPresets.userId, user.id)
       ),
     });
@@ -199,7 +202,7 @@ export async function DELETE(
     // 删除预设
     await db.delete(publishPresets)
       .where(and(
-        eq(publishPresets.id, params.id),
+        eq(publishPresets.id, id),
         eq(publishPresets.userId, user.id)
       ));
 

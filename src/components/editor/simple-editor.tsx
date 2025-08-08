@@ -5,7 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Save, FileText, Loader2, Copy, Chrome, ArrowLeft, Upload } from 'lucide-react';
+import { Save, FileText, Loader2, Copy, Chrome, ArrowLeft, Upload, Settings, CheckCircle2, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { countWords, calculateReadingTime } from '@/lib/utils';
 import { FeishuImportDialog } from './feishu-import-dialog';
@@ -16,10 +16,10 @@ interface EditorProps {
   onSave?: (title: string, content: string) => Promise<void>;
 }
 
-export function SimpleEditor({ 
-  initialTitle = '', 
-  initialContent = '', 
-  onSave 
+export function SimpleEditor({
+  initialTitle = '',
+  initialContent = '',
+  onSave
 }: EditorProps) {
   const [title, setTitle] = useState(initialTitle);
   const [content, setContent] = useState(initialContent);
@@ -31,6 +31,18 @@ export function SimpleEditor({
   const [isCopying, setIsCopying] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [showFeishuImport, setShowFeishuImport] = useState(false);
+  const [isApplyingPreset, setIsApplyingPreset] = useState(false);
+  const [presets, setPresets] = useState<Array<{ id: string; name: string; isDefault?: boolean; headerContent?: string; footerContent?: string; authorName?: string }>>([]);
+  const [presetsLoaded, setPresetsLoaded] = useState(false);
+  const [selectedPresetId, setSelectedPresetId] = useState<string>('');
+  const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' }>({ visible: false, message: '', type: 'success' });
+
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ visible: true, message, type });
+    window.setTimeout(() => {
+      setToast((prev) => ({ ...prev, visible: false }));
+    }, 2000);
+  };
 
   // 当初始值改变时更新状态
   useEffect(() => {
@@ -100,10 +112,11 @@ export function SimpleEditor({
       if (onSave) {
         await onSave(title, content);
         setLastSaved(new Date());
+        showToast('保存成功', 'success');
       }
     } catch (error) {
       console.error('保存失败:', error);
-      alert('保存失败，请重试');
+      showToast('保存失败，请重试', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -119,12 +132,68 @@ export function SimpleEditor({
     }
   };
 
+  // 加载预设列表（只加载一次）
+  const loadPresets = useCallback(async () => {
+    if (presetsLoaded) return;
+    try {
+      const response = await fetch('/api/presets');
+      const data = await response.json();
+      if (data.success && Array.isArray(data.data)) {
+        const list = data.data as Array<{ id: string; name: string; isDefault?: boolean; headerContent?: string; footerContent?: string; authorName?: string }>;
+        const sorted = [...list].sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0));
+        setPresets(sorted);
+        const def = sorted.find(p => p.isDefault) || sorted[0];
+        if (def) setSelectedPresetId(def.id);
+      }
+    } catch (e) {
+      console.error('加载预设失败:', e);
+    } finally {
+      setPresetsLoaded(true);
+    }
+  }, [presetsLoaded]);
+
+  useEffect(() => {
+    // 初始加载
+    loadPresets();
+  }, [loadPresets]);
+
+  // 应用选中的预设（将开头/末尾定制内容包裹当前正文）
+  const handleApplyPreset = async () => {
+    try {
+      setIsApplyingPreset(true);
+      if (!presetsLoaded) await loadPresets();
+      const preset = presets.find(p => p.id === selectedPresetId) || presets.find(p => p.isDefault) || presets[0];
+      if (!preset) {
+        alert('还没有可用的预设');
+        return;
+      }
+
+      const headerMd: string = preset.headerContent || '';
+      const footerMd: string = preset.footerContent || '';
+
+      // 组装新的内容（保持Markdown，空行分隔）
+      const parts: string[] = [];
+      if (headerMd.trim()) parts.push(headerMd.trim());
+      parts.push(content.trim());
+      if (footerMd.trim()) parts.push(footerMd.trim());
+      const merged = parts.filter(Boolean).join('\n\n');
+
+      setContent(merged);
+      alert('已应用预设的开头/末尾内容');
+    } catch (error) {
+      console.error('应用预设失败:', error);
+      alert('应用预设失败，请稍后重试');
+    } finally {
+      setIsApplyingPreset(false);
+    }
+  };
+
   // 检查Chrome扩展是否已安装
   const checkExtensionInstalled = () => {
     return new Promise((resolve) => {
-      if (typeof chrome !== 'undefined' && chrome.runtime) {
-        chrome.runtime.sendMessage('字流助手扩展ID', { action: 'ping' }, (response) => {
-          resolve(!chrome.runtime.lastError);
+      if (typeof window !== 'undefined' && typeof (window as any).chrome !== 'undefined' && (window as any).chrome.runtime) {
+        (window as any).chrome.runtime.sendMessage('字流助手扩展ID', { action: 'ping' }, (response: any) => {
+          resolve(!(window as any).chrome.runtime.lastError);
         });
       } else {
         resolve(false);
@@ -227,7 +296,7 @@ export function SimpleEditor({
       }
 
       // 预处理HTML，优化为更简洁的格式，避免被微信编辑器过度处理
-      function preprocessContentForWechat(html) {
+      function preprocessContentForWechat(html: string): string {
         let processedHtml = html;
 
         // 1. 清理多余的空格和换行，但保持基本结构
@@ -240,7 +309,7 @@ export function SimpleEditor({
         // 2. 特殊处理代码块 - 使用微信编辑器友好的预分行格式
         processedHtml = processedHtml.replace(
           /<pre><code[^>]*>([\s\S]*?)<\/code><\/pre>/g,
-          (match, codeContent) => {
+          (match: string, codeContent: string) => {
             // 清理代码内容
             const cleanCode = codeContent
               .replace(/^\s+|\s+$/g, '') // 去除首尾空白
@@ -309,7 +378,8 @@ export function SimpleEditor({
       }
     } catch (error) {
       console.error('复制失败:', error);
-      alert(`复制失败: ${error.message}`);
+      const message = error instanceof Error ? error.message : String(error);
+      alert(`复制失败: ${message}`);
     } finally {
       setIsCopying(false);
     }
@@ -317,6 +387,25 @@ export function SimpleEditor({
 
   return (
     <div className="h-screen flex flex-col">
+      {/* 轻量提示 */}
+      {toast.visible && (
+        <div
+          role="status"
+          aria-live="polite"
+          className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-lg shadow-md border flex items-center gap-2 text-sm ${
+            toast.type === 'success'
+              ? 'bg-green-50 border-green-200 text-green-700'
+              : 'bg-red-50 border-red-200 text-red-700'
+          }`}
+        >
+          {toast.type === 'success' ? (
+            <CheckCircle2 className="h-4 w-4" />
+          ) : (
+            <AlertTriangle className="h-4 w-4" />
+          )}
+          <span>{toast.message}</span>
+        </div>
+      )}
       {/* 工具栏 */}
       <div className="border-b bg-white px-4 py-3">
         <div className="flex items-center justify-between">
@@ -338,8 +427,39 @@ export function SimpleEditor({
               </span>
             )}
           </div>
-          
+
           <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2">
+              <select
+                value={selectedPresetId}
+                onChange={(e) => setSelectedPresetId(e.target.value)}
+                onFocus={() => loadPresets()}
+                className="text-sm border rounded px-2 py-1"
+              >
+                <option value="">选择预设</option>
+                {presets.map(preset => (
+                  <option key={preset.id} value={preset.id}>
+                    {preset.name}{preset.isDefault ? '（默认）' : ''}
+                  </option>
+                ))}
+              </select>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleApplyPreset}
+                disabled={isApplyingPreset || presets.length === 0}
+                className="text-amber-700 border-amber-200 hover:bg-amber-50"
+              >
+                {isApplyingPreset ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Settings className="h-4 w-4 mr-1" />
+                )}
+                应用预设
+              </Button>
+            </div>
+
             <Button
               variant="outline"
               size="sm"
@@ -420,7 +540,7 @@ export function SimpleEditor({
               className="text-lg font-medium border-none px-0 focus-visible:ring-0"
             />
           </div>
-          
+
           <div className="flex-1 p-4">
             <Textarea
               value={content}
@@ -497,10 +617,16 @@ console.log('代码示例');
                       字
                     </div>
                     <div className="ml-3 flex-1">
-                      <div className="text-base font-medium text-gray-900 truncate">
+                      <div className="text-base font-medium text-gray-900 break-words whitespace-normal">
                         {title || '字流'}
                       </div>
-                      <div className="text-xs text-gray-500">刚刚</div>
+                      <div className="text-xs text-gray-500">
+                        {(() => {
+                          const preset = presets.find(p => p.id === selectedPresetId) || presets.find(p => p.isDefault);
+                          const author = preset?.authorName?.trim();
+                          return author ? `作者：${author} · 刚刚` : '刚刚';
+                        })()}
+                      </div>
                     </div>
                     <div className="flex items-center space-x-3">
                       <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -100,26 +100,26 @@ export async function registerUser(data: z.infer<typeof registerSchema>) {
   try {
     // 验证输入
     const { name, email, password } = registerSchema.parse(data);
-    
+
     // 检查用户是否已存在
     const existingUser = await db.query.users.findFirst({
       where: eq(users.email, email)
     });
-    
+
     if (existingUser) {
       throw new Error('用户已存在');
     }
-    
+
     // 加密密码
     const passwordHash = await bcrypt.hash(password, 12);
-    
+
     // 创建用户
     const [newUser] = await db.insert(users).values({
       name,
       email,
       passwordHash,
     }).returning();
-    
+
     return {
       id: newUser.id,
       email: newUser.email,
@@ -127,7 +127,7 @@ export async function registerUser(data: z.infer<typeof registerSchema>) {
     };
   } catch (error) {
     if (error instanceof z.ZodError) {
-      throw new Error(error.errors[0].message);
+      throw new Error(error.issues?.[0]?.message || '参数错误');
     }
     throw error;
   }

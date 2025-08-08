@@ -13,12 +13,12 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { content, platform, style } = convertSchema.parse(body);
-    
+
     if (platform === 'wechat') {
       const inlineHtml = convertToWechatInline(content, style as keyof typeof WECHAT_STYLES);
       const wordCount = content.replace(/\s/g, '').length;
       const readingTime = Math.ceil(wordCount / 300);
-      
+
       return NextResponse.json({
         success: true,
         data: {
@@ -29,21 +29,21 @@ export async function POST(request: NextRequest) {
         },
       });
     }
-    
+
     return NextResponse.json({
       success: false,
       error: '暂不支持该平台',
     }, { status: 400 });
   } catch (error) {
     console.error('Convert inline error:', error);
-    
+
     if (error instanceof z.ZodError) {
       return NextResponse.json({
         success: false,
-        error: error.errors[0].message,
+      error: error.issues?.[0]?.message || '参数错误',
       }, { status: 400 });
     }
-    
+
     return NextResponse.json({
       success: false,
       error: '转换失败',

@@ -13,30 +13,30 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { content, platform, style } = convertSchema.parse(body);
-    
+
     if (platform === 'wechat') {
       const result = previewConversion(content, style as keyof typeof WECHAT_STYLES);
-      
+
       return NextResponse.json({
         success: true,
         data: result,
       });
     }
-    
+
     return NextResponse.json({
       success: false,
       error: '暂不支持该平台',
     }, { status: 400 });
   } catch (error) {
     console.error('Convert error:', error);
-    
+
     if (error instanceof z.ZodError) {
       return NextResponse.json({
         success: false,
-        error: error.errors[0].message,
+      error: error.issues?.[0]?.message || '参数错误',
       }, { status: 400 });
     }
-    
+
     return NextResponse.json({
       success: false,
       error: '转换失败',
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   try {
     const styles = getAvailableStyles();
-    
+
     return NextResponse.json({
       success: true,
       data: {
@@ -58,7 +58,7 @@ export async function GET() {
     });
   } catch (error) {
     console.error('Get styles error:', error);
-    
+
     return NextResponse.json({
       success: false,
       error: '获取样式失败',

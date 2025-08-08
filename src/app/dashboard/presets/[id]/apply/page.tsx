@@ -35,7 +35,7 @@ export default function ApplyPresetPage() {
     try {
       const response = await fetch(`/api/presets/${params.id}`);
       const data = await response.json();
-      
+
       if (data.success) {
         setPreset(data.data);
       } else {
@@ -51,7 +51,7 @@ export default function ApplyPresetPage() {
   // Markdown转HTML的简单实现
   const markdownToHtml = (markdown: string) => {
     if (!markdown || !markdown.trim()) return '';
-    
+
     return markdown
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/g, '<em>$1</em>')
@@ -104,9 +104,9 @@ export default function ApplyPresetPage() {
       };
 
       // 尝试发送消息给插件
-      if (typeof chrome !== 'undefined' && chrome.runtime) {
-        chrome.runtime.sendMessage(message, (response) => {
-          if (chrome.runtime.lastError) {
+      if (typeof window !== 'undefined' && typeof (window as any).chrome !== 'undefined' && (window as any).chrome.runtime) {
+        (window as any).chrome.runtime.sendMessage(message, (response: any) => {
+          if ((window as any).chrome.runtime.lastError) {
             alert('请确保已安装并启用字流Chrome插件');
           } else {
             alert('内容已发送到微信编辑器！');
@@ -185,7 +185,7 @@ export default function ApplyPresetPage() {
           {/* 编辑区域 */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">编辑内容</h2>
-            
+
             <div className="space-y-4">
               {/* 标题输入 */}
               <div>
@@ -235,24 +235,24 @@ export default function ApplyPresetPage() {
               <Eye className="w-5 h-5 text-gray-600" />
               <h2 className="text-lg font-semibold text-gray-900">预览效果</h2>
             </div>
-            
+
             <div className="border border-gray-200 rounded-lg p-4 min-h-96 bg-gray-50">
               {title && (
                 <h1 className="text-xl font-bold text-gray-900 mb-4 pb-2 border-b border-gray-200">
                   {title}
                 </h1>
               )}
-              
+
               {preset.authorName && (
                 <p className="text-sm text-gray-600 mb-4">
                   作者：{preset.authorName}
                 </p>
               )}
-              
-              <div 
+
+              <div
                 className="prose prose-sm max-w-none"
-                dangerouslySetInnerHTML={{ 
-                  __html: previewContent || '<p class="text-gray-400">请输入内容以查看预览效果</p>' 
+                dangerouslySetInnerHTML={{
+                  __html: previewContent || '<p class="text-gray-400">请输入内容以查看预览效果</p>'
                 }}
               />
             </div>

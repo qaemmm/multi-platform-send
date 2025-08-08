@@ -83,7 +83,7 @@ export default function DashboardPage() {
               <h1 className="text-2xl font-bold text-gray-900">字流</h1>
               <span className="text-gray-500">工作台</span>
             </div>
-            
+
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
                 <User className="h-4 w-4 text-gray-500" />
@@ -130,7 +130,7 @@ export default function DashboardPage() {
                   </Link>
                   <button
                     onClick={() => {
-                      const tip = document.querySelector('.new-feature-tip');
+                      const tip = document.querySelector('.new-feature-tip') as HTMLElement | null;
                       if (tip) tip.style.display = 'none';
                     }}
                     className="text-sm text-gray-500 hover:text-gray-700 transition-colors"

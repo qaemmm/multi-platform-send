@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { db, articles } from '@/lib/db';
-import { eq } from 'drizzle-orm';
+import { eq, desc } from 'drizzle-orm';
 import { z } from 'zod';
 import { countWords, calculateReadingTime } from '@/lib/utils';
 
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof z.ZodError) {
       const response = NextResponse.json({
         success: false,
-        error: error.errors[0].message,
+        error: error.issues?.[0]?.message || '参数错误',
       }, { status: 400 });
       return setCorsHeaders(response, request);
     }
@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
 
     // 构建查询条件
     let whereCondition = eq(articles.userId, session.user.id);
-    
+
     if (status && (status === 'draft' || status === 'published')) {
       whereCondition = eq(articles.userId, session.user.id);
       // 这里需要添加状态过滤，但为了简化先不实现

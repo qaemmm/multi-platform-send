@@ -8,9 +8,10 @@ import { eq, and } from 'drizzle-orm';
 // 设置默认预设
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await context.params;
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return NextResponse.json({
@@ -34,7 +35,7 @@ export async function POST(
     // 检查预设是否存在
     const existingPreset = await db.query.publishPresets.findFirst({
       where: and(
-        eq(publishPresets.id, params.id),
+        eq(publishPresets.id, id),
         eq(publishPresets.userId, user.id)
       ),
     });
@@ -53,12 +54,12 @@ export async function POST(
 
     // 设置当前预设为默认
     await db.update(publishPresets)
-      .set({ 
+      .set({
         isDefault: true,
         updatedAt: new Date(),
       })
       .where(and(
-        eq(publishPresets.id, params.id),
+        eq(publishPresets.id, id),
         eq(publishPresets.userId, user.id)
       ));
 

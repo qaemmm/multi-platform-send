@@ -304,7 +304,7 @@ export const WECHAT_STYLES = {
 
 // 转换Markdown到公众号HTML
 export function convertToWechat(
-  markdown: string, 
+  markdown: string,
   styleKey: keyof typeof WECHAT_STYLES = 'default'
 ): string {
   // 配置marked选项
@@ -313,9 +313,9 @@ export function convertToWechat(
     gfm: true,    // 支持GitHub风格Markdown
   });
 
-  const html = marked(markdown);
+  const html = marked(markdown) as string;
   const style = WECHAT_STYLES[styleKey];
-  
+
   return `
     ${style.css}
     <div class="wechat-content">
@@ -343,7 +343,7 @@ export function convertToWechatInline(
     gfm: true,
   });
 
-  const html = marked(markdown);
+  const html = marked(markdown) as string;
 
   // 预处理HTML，解决格式问题
   const cleanedHtml = preprocessHtmlForWechat(html);

@@ -192,18 +192,6 @@ export default function PresetsPage() {
                         <span className="text-gray-500">作者：</span>
                         <span className="text-gray-900">{preset.authorName || '未设置'}</span>
                       </div>
-                      <div>
-                        <span className="text-gray-500">原创：</span>
-                        <span className="text-gray-900">{preset.isOriginal ? '是' : '否'}</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">赞赏：</span>
-                        <span className="text-gray-900">{preset.enableReward ? '开启' : '关闭'}</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">自动封面：</span>
-                        <span className="text-gray-900">{preset.autoSelectCover ? '是' : '否'}</span>
-                      </div>
                     </div>
 
                     <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
