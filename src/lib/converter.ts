@@ -388,14 +388,20 @@ function preprocessHtmlForWechat(html: string): string {
   );
 
   // 2.5 兼容微信公众号：将 h1/h2/h3 转为等价的 p + span 内联样式，避免 h 标签被剥离
-  const h1Style = 'margin: 24px 0 16px 0; font-size: 24px; font-weight: 600; color: #2c3e50; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;';
-  const h2Style = 'margin: 20px 0 12px 0; font-size: 20px; font-weight: 600; color: #34495e; border-left: 4px solid #3498db; padding-left: 12px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;';
-  const h3Style = 'margin: 16px 0 8px 0; font-size: 18px; font-weight: 600; color: #2c3e50; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;';
+  // 分离容器样式和文本样式，避免重复应用边框
+  const h1ContainerStyle = 'margin: 24px 0 16px 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;';
+  const h1TextStyle = 'font-size: 24px; font-weight: 600; color: #2c3e50; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;';
+
+  const h2ContainerStyle = 'margin: 20px 0 12px 0; border-left: 4px solid #3498db; padding-left: 12px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;';
+  const h2TextStyle = 'font-size: 20px; font-weight: 600; color: #34495e; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;';
+
+  const h3ContainerStyle = 'margin: 16px 0 8px 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;';
+  const h3TextStyle = 'font-size: 18px; font-weight: 600; color: #2c3e50; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;';
 
   processedHtml = processedHtml
-    .replace(/<h1[^>]*>([\s\S]*?)<\/h1>/gi, (_m, text) => `<p style="${h1Style}"><span style="${h1Style}">${text}</span></p>`)
-    .replace(/<h2[^>]*>([\s\S]*?)<\/h2>/gi, (_m, text) => `<p style="${h2Style}"><span style="${h2Style}">${text}</span></p>`)
-    .replace(/<h3[^>]*>([\s\S]*?)<\/h3>/gi, (_m, text) => `<p style="${h3Style}"><span style="${h3Style}">${text}</span></p>`);
+    .replace(/<h1[^>]*>([\s\S]*?)<\/h1>/gi, (_m, text) => `<p style="${h1ContainerStyle}"><span style="${h1TextStyle}">${text}</span></p>`)
+    .replace(/<h2[^>]*>([\s\S]*?)<\/h2>/gi, (_m, text) => `<p style="${h2ContainerStyle}"><span style="${h2TextStyle}">${text}</span></p>`)
+    .replace(/<h3[^>]*>([\s\S]*?)<\/h3>/gi, (_m, text) => `<p style="${h3ContainerStyle}"><span style="${h3TextStyle}">${text}</span></p>`);
 
   // 3. 修复行内代码的空格问题
   processedHtml = processedHtml.replace(
