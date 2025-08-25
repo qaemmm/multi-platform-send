@@ -83,7 +83,59 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     handleOneClickPublish(message.data, sendResponse);
     return true;
   }
+
+  // 处理API请求（解决跨域cookie问题）
+  if (message.action === 'apiRequest') {
+    handleApiRequest(message.data)
+      .then(response => sendResponse({ success: true, data: response }))
+      .catch(error => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
 });
+
+// 处理API请求（解决跨域cookie问题）
+async function handleApiRequest(requestData) {
+  const API_BASE_URL = 'http://localhost:3000';
+  const { method = 'GET', endpoint, body, headers = {} } = requestData;
+
+  const url = `${API_BASE_URL}${endpoint}`;
+  const fetchOptions = {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      ...headers
+    },
+    credentials: 'include' // 重要：包含cookie
+  };
+
+  if (body && method !== 'GET') {
+    fetchOptions.body = JSON.stringify(body);
+  }
+
+  console.log('发起API请求:', url, fetchOptions);
+
+  try {
+    const response = await fetch(url, fetchOptions);
+
+    // 处理非JSON响应
+    let data;
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      data = await response.json();
+    } else {
+      data = { message: await response.text() };
+    }
+
+    if (!response.ok) {
+      throw new Error(data.error || data.message || `HTTP ${response.status}`);
+    }
+
+    return data;
+  } catch (error) {
+    console.error('API请求失败:', error);
+    throw error;
+  }
+}
 
 // 通知所有公众号页面有新内容
 function notifyWechatTabs() {

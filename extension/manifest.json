@@ -26,13 +26,18 @@
         "https://mp.weixin.qq.com/*",
         "http://mp.weixin.qq.com/*"
       ],
-      "js": ["content.js"],
+      "js": [
+        "utils.js",
+        "api.js",
+        "editor.js",
+        "ui.js",
+        "main.js"
+      ],
       "run_at": "document_end",
       "all_frames": false
     }
   ],
   "action": {
-    "default_popup": "popup.html",
     "default_title": "字流助手",
     "default_icon": {
       "16": "icons/icon16.png",
