@@ -73,19 +73,42 @@
       }
     },
 
-    // 设置富文本编辑器内容（静默模式，不会导致页面跳变）
+    // 设置富文本编辑器内容（静默模式，支持ProseMirror）
     setRichTextContent: (element, htmlContent) => {
       if (!element) return false;
 
       try {
-        // 静默设置内容，不触发focus
-        element.innerHTML = htmlContent;
+        // 检查是否是ProseMirror编辑器
+        if (element.classList.contains('ProseMirror')) {
+          // 对于ProseMirror编辑器，需要特殊处理
+          // 先清空现有内容
+          element.innerHTML = '';
+
+          // 创建临时容器解析HTML
+          const tempDiv = document.createElement('div');
+          tempDiv.innerHTML = htmlContent;
+
+          // 将解析后的内容逐个添加到编辑器
+          Array.from(tempDiv.childNodes).forEach(node => {
+            element.appendChild(node.cloneNode(true));
+          });
+        } else {
+          // 传统富文本编辑器
+          element.innerHTML = htmlContent;
+        }
 
         // 触发必要的事件
-        ['input', 'change'].forEach(eventType => {
+        ['input', 'change', 'keyup'].forEach(eventType => {
           const event = new Event(eventType, { bubbles: true });
           element.dispatchEvent(event);
         });
+
+        // 对于ProseMirror，还需要触发特殊事件
+        if (element.classList.contains('ProseMirror')) {
+          // 触发ProseMirror的更新事件
+          const proseMirrorEvent = new Event('prosemirror-update', { bubbles: true });
+          element.dispatchEvent(proseMirrorEvent);
+        }
 
         return true;
       } catch (error) {
@@ -192,6 +215,212 @@
     // 生成唯一ID
     generateId: () => {
       return 'ziliu_' + Math.random().toString(36).substr(2, 9);
+    },
+
+    // 处理特殊语法（如 {{featured-articles:10}}）
+    processSpecialSyntax: async (content) => {
+      // 处理 {{featured-articles:数量}} 语法
+      const featuredArticlesRegex = /\{\{featured-articles:(\d+)\}\}/g;
+
+      let processedContent = content;
+      let match;
+
+      while ((match = featuredArticlesRegex.exec(content)) !== null) {
+        const count = parseInt(match[1]) || 5;
+        const placeholder = match[0];
+
+        try {
+          // 获取历史文章
+          const articles = await ZiliuUtils.fetchWeChatArticles(count);
+
+          // 生成文章链接列表（使用p标签但不添加换行）
+          const articleLinks = articles.map(article => {
+            return `<p><a href="${article.url}" target="_blank">${article.title}</a></p>`;
+          }).join('');
+
+          // 替换占位符
+          processedContent = processedContent.replace(placeholder, articleLinks);
+
+          console.log(`✅ 已替换 ${placeholder} 为 ${articles.length} 篇历史文章`);
+        } catch (error) {
+          console.error('获取历史文章失败:', error);
+          // 如果失败，保留原始占位符
+          processedContent = processedContent.replace(placeholder, `<!-- 获取历史文章失败: ${error.message} -->`);
+        }
+      }
+
+      return processedContent;
+    },
+
+    // 获取微信公众号历史文章
+    fetchWeChatArticles: async (count = 5) => {
+      try {
+        // 获取token
+        const token = ZiliuUtils.getWeChatToken();
+        if (!token) {
+          throw new Error('未找到微信token');
+        }
+
+        // 构建请求URL
+        const url = `https://mp.weixin.qq.com/cgi-bin/appmsgpublish?sub=list&search_field=null&begin=0&count=${count}&query=&fakeid=&type=101_1&free_publish_type=1&sub_action=list_ex&fingerprint=${ZiliuUtils.getFingerprint()}&token=${token}&lang=zh_CN&f=json&ajax=1`;
+
+        console.log('🔍 API请求URL:', url);
+
+        const response = await fetch(url, {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Accept': 'application/json, text/javascript, */*; q=0.01',
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        });
+
+        console.log('📡 API响应状态:', response.status, response.statusText);
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        console.log('📄 API响应数据:', data);
+
+        if (data.base_resp && data.base_resp.ret !== 0) {
+          throw new Error(`API错误: ${data.base_resp.err_msg || '未知错误'}`);
+        }
+
+        // 解析文章列表
+        const articles = [];
+
+        if (data.publish_page) {
+          console.log('📄 publish_page 类型:', Array.isArray(data.publish_page) ? '数组' : typeof data.publish_page);
+
+          let publishPageData = data.publish_page;
+
+          // 如果 publish_page 是字符串，先解析成对象
+          if (typeof data.publish_page === 'string') {
+            try {
+              publishPageData = JSON.parse(data.publish_page);
+              console.log('✅ publish_page 字符串解析成功');
+            } catch (parseError) {
+              console.error('❌ publish_page 字符串解析失败:', parseError);
+              throw new Error('无法解析publish_page数据');
+            }
+          }
+
+          let publishList = null;
+
+          // 如果解析后是对象，查找 publish_list
+          if (publishPageData && typeof publishPageData === 'object' && !Array.isArray(publishPageData)) {
+            if (publishPageData.publish_list && Array.isArray(publishPageData.publish_list)) {
+              publishList = publishPageData.publish_list;
+              console.log('✅ 找到 publish_list，包含', publishList.length, '项');
+            } else {
+              console.log('📋 publishPageData 结构:', Object.keys(publishPageData));
+            }
+          }
+          // 如果是数组，直接使用
+          else if (Array.isArray(publishPageData)) {
+            publishList = publishPageData;
+            console.log('✅ publish_page 是数组，包含', publishList.length, '项');
+          }
+
+          if (publishList && publishList.length > 0) {
+            publishList.forEach((item, index) => {
+              console.log(`📖 处理第${index + 1}项:`, Object.keys(item || {}));
+
+              if (!item) return;
+
+              // 尝试不同的文章数据结构
+              let articleList = null;
+
+              // 如果有 publish_info，先解析它（可能是JSON字符串）
+              if (item.publish_info) {
+                let publishInfo = item.publish_info;
+
+                // 如果 publish_info 是字符串，解析成对象
+                if (typeof item.publish_info === 'string') {
+                  try {
+                    publishInfo = JSON.parse(item.publish_info);
+                    console.log('✅ publish_info 字符串解析成功');
+                  } catch (parseError) {
+                    console.error('❌ publish_info 字符串解析失败:', parseError);
+                    publishInfo = null;
+                  }
+                }
+
+                // 从解析后的 publish_info 中获取文章列表
+                if (publishInfo && publishInfo.appmsgex && Array.isArray(publishInfo.appmsgex)) {
+                  articleList = publishInfo.appmsgex;
+                  console.log('📚 从 publish_info.appmsgex 找到文章组:', articleList.length, '篇');
+                }
+              }
+              // 其他可能的数据结构
+              else if (item.appmsgex) {
+                articleList = item.appmsgex;
+                console.log('📚 从 appmsgex 找到文章组:', articleList.length, '篇');
+              } else if (item.articles) {
+                articleList = item.articles;
+                console.log('📚 从 articles 找到文章组:', articleList.length, '篇');
+              } else if (Array.isArray(item)) {
+                articleList = item;
+                console.log('📚 item 本身是文章数组:', articleList.length, '篇');
+              } else if (item.title) {
+                // 如果 item 本身就是一篇文章
+                articleList = [item];
+                console.log('📚 item 本身是一篇文章');
+              }
+
+              if (articleList && Array.isArray(articleList)) {
+                articleList.forEach(article => {
+                  if (article && article.title) {
+                    articles.push({
+                      title: article.title || '无标题',
+                      url: article.link || article.url || '#',
+                      digest: article.digest || article.summary || '',
+                      create_time: article.create_time || article.update_time || 0
+                    });
+                  }
+                });
+              }
+            });
+          } else {
+            console.log('⚠️ 未找到有效的发布列表数据');
+            if (typeof data.publish_page === 'object' && !Array.isArray(data.publish_page)) {
+              console.log('📋 可用的 publish_page 字段:', Object.keys(data.publish_page));
+            }
+          }
+        } else {
+          console.log('❌ 未找到 publish_page 数据');
+        }
+
+        console.log(`✅ 获取到 ${articles.length} 篇历史文章`);
+        return articles.slice(0, count);
+      } catch (error) {
+        console.error('❌ 获取微信历史文章失败:', error);
+        throw error;
+      }
+    },
+
+    // 获取微信token
+    getWeChatToken: () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get('token');
+    },
+
+    // 获取fingerprint
+    getFingerprint: () => {
+      // 尝试从页面中获取fingerprint
+      const scripts = document.querySelectorAll('script');
+      for (let script of scripts) {
+        const content = script.textContent || script.innerText;
+        const match = content.match(/fingerprint['"]\s*:\s*['"]([^'"]+)['"]/);
+        if (match) {
+          return match[1];
+        }
+      }
+
+      // 如果找不到，生成一个简单的fingerprint
+      return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     }
   };
 

@@ -29,10 +29,10 @@
                             document.querySelector('input[placeholder="请输入作者"]') ||
                             document.querySelector('.js_author');
 
-      // 查找内容编辑器
-      elements.contentEditor = document.querySelector('#js_editor_insertimg') ||
-                              document.querySelector('.rich_media_content') ||
-                              document.querySelector('[contenteditable="true"]');
+      // 查找内容编辑器（ProseMirror编辑器）
+      elements.contentEditor = document.querySelector('.ProseMirror') ||
+                              document.querySelector('.rich_media_content .ProseMirror') ||
+                              document.querySelector('[contenteditable="true"]:not(.editor_content_placeholder)');
 
       // 查找摘要输入框
       elements.summaryInput = document.querySelector('#js_description') ||
@@ -88,7 +88,12 @@
         // 填充正文内容
         if (elements.contentEditor && data.content) {
           console.log('📄 填充正文内容');
-          const cleanContent = ZiliuUtils.cleanHtmlContent(data.content);
+
+          // 处理特殊语法（如 {{featured-articles:10}}）
+          console.log('🔄 处理特殊语法...');
+          const processedContent = await ZiliuUtils.processSpecialSyntax(data.content);
+
+          const cleanContent = ZiliuUtils.cleanHtmlContent(processedContent);
           const contentSuccess = ZiliuUtils.setRichTextContent(elements.contentEditor, cleanContent);
           if (!contentSuccess) {
             console.warn('⚠️ 正文内容填充失败');
