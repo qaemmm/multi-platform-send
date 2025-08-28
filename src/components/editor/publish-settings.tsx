@@ -405,6 +405,74 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
                 </>
               )}
 
+              {/* 知乎平台特定字段 */}
+              {platform === 'zhihu' && (
+                <>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-sm font-medium text-gray-700">
+                        开头内容
+                      </label>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowHeaderPreview(!showHeaderPreview)}
+                        className="h-6 w-6 p-0"
+                      >
+                        {showHeaderPreview ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                      </Button>
+                    </div>
+                    {showHeaderPreview ? (
+                      <div className="border rounded-md p-3 bg-gray-50 min-h-[80px] text-sm">
+                        <div
+                          dangerouslySetInnerHTML={{
+                            __html: editingSettings?.headerContent || '<p class="text-gray-400">暂无开头内容</p>'
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <Textarea
+                        value={editingSettings?.headerContent || ''}
+                        onChange={(e) => setEditingSettings(prev => prev ? {...prev, headerContent: e.target.value} : null)}
+                        placeholder="输入文章开头的固定内容（支持Markdown）"
+                        rows={3}
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-sm font-medium text-gray-700">
+                        结尾内容
+                      </label>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowFooterPreview(!showFooterPreview)}
+                        className="h-6 w-6 p-0"
+                      >
+                        {showFooterPreview ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                      </Button>
+                    </div>
+                    {showFooterPreview ? (
+                      <div className="border rounded-md p-3 bg-gray-50 min-h-[80px] text-sm">
+                        <div
+                          dangerouslySetInnerHTML={{
+                            __html: editingSettings?.footerContent || '<p class="text-gray-400">暂无结尾内容</p>'
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <Textarea
+                        value={editingSettings?.footerContent || ''}
+                        onChange={(e) => setEditingSettings(prev => prev ? {...prev, footerContent: e.target.value} : null)}
+                        placeholder="输入文章结尾的固定内容（支持Markdown）"
+                        rows={3}
+                      />
+                    )}
+                  </div>
+                </>
+              )}
+
               {/* 平台特定配置 */}
               <div className="border-t pt-4">
                 <PlatformConfigForm

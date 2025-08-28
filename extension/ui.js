@@ -21,15 +21,33 @@
 
     // 在左侧工具栏添加字流助手按钮
     addToolbarButton() {
-      const toolbar = document.querySelector('.js_editor_toolbar') ||
-                     document.querySelector('.editor_toolbar') ||
-                     document.querySelector('.js_toolbar');
+      // 检测当前平台并使用相应的工具栏选择器
+      let toolbar = null;
+      let platform = 'unknown';
+
+      // 微信公众号编辑器
+      if (document.querySelector('.js_editor_toolbar')) {
+        toolbar = document.querySelector('.js_editor_toolbar') ||
+                 document.querySelector('.editor_toolbar') ||
+                 document.querySelector('.js_toolbar');
+        platform = 'wechat';
+      }
+      // 知乎编辑器 - 查找知乎特有的工具栏
+      else if (window.location.href.includes('zhuanlan.zhihu.com')) {
+        // 知乎可能没有传统的工具栏，直接使用悬浮按钮
+        platform = 'zhihu';
+        console.log('🔍 知乎平台，使用悬浮按钮方案');
+        this.createFloatingButton();
+        return;
+      }
 
       if (!toolbar) {
         console.warn('未找到工具栏，使用备用方案');
         this.createFloatingButton();
         return;
       }
+
+      console.log(`🔍 检测到平台: ${platform}，找到工具栏:`, toolbar);
 
       const ziliuButton = document.createElement('div');
       ziliuButton.id = 'ziliu-toolbar-btn';
@@ -82,12 +100,31 @@
 
     // 创建悬浮按钮（备用方案）
     createFloatingButton() {
+      // 检查是否已经存在悬浮按钮
+      if (document.getElementById('ziliu-floating-btn')) {
+        return;
+      }
+
       const floatingBtn = document.createElement('div');
       floatingBtn.id = 'ziliu-floating-btn';
+
+      // 根据平台调整图标和样式
+      const isZhihu = window.location.href.includes('zhuanlan.zhihu.com');
+      const bgColor = isZhihu ? '#0084ff' : '#07c160'; // 知乎蓝色 vs 微信绿色
+      const iconText = isZhihu ? '字' : '流'; // 知乎显示"字"，微信显示"流"
+
       floatingBtn.innerHTML = `
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
-          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-        </svg>
+        <div style="
+          width: 100%;
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 18px;
+          font-weight: bold;
+          color: white;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        ">${iconText}</div>
       `;
 
       floatingBtn.style.cssText = `
@@ -96,26 +133,27 @@
         right: 20px;
         width: 56px;
         height: 56px;
-        background: #07c160;
+        background: ${bgColor};
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
         cursor: pointer;
-        box-shadow: 0 4px 12px rgba(7, 193, 96, 0.3);
-        z-index: 9999;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        z-index: 10000;
         transition: all 0.3s ease;
         transform: translateY(-50%);
+        user-select: none;
       `;
 
       floatingBtn.addEventListener('mouseenter', () => {
         floatingBtn.style.transform = 'translateY(-50%) scale(1.1)';
-        floatingBtn.style.boxShadow = '0 6px 16px rgba(7, 193, 96, 0.4)';
+        floatingBtn.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.2)';
       });
 
       floatingBtn.addEventListener('mouseleave', () => {
         floatingBtn.style.transform = 'translateY(-50%) scale(1)';
-        floatingBtn.style.boxShadow = '0 4px 12px rgba(7, 193, 96, 0.3)';
+        floatingBtn.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
       });
 
       floatingBtn.addEventListener('click', () => {
@@ -123,6 +161,7 @@
       });
 
       document.body.appendChild(floatingBtn);
+      console.log(`✅ 已创建${isZhihu ? '知乎' : '微信'}平台悬浮按钮`);
     },
 
     // 创建右侧面板
@@ -755,7 +794,7 @@
           gap: 6px;
         }
 
-        .ziliu-fill-btn, .ziliu-edit-btn {
+        .ziliu-fill-btn, .ziliu-copy-markdown-btn, .ziliu-edit-btn {
           height: 32px;
           border: 1px solid #e1e8ed;
           border-radius: 8px;
@@ -776,6 +815,13 @@
           min-width: 48px;
         }
 
+        .ziliu-copy-markdown-btn {
+          width: 32px;
+          background: #e6f7ff;
+          color: #1890ff;
+          border-color: #91d5ff;
+        }
+
         .ziliu-edit-btn {
           width: 32px;
           background: #f8f9fa;
@@ -790,6 +836,19 @@
         }
 
         .ziliu-fill-btn:disabled {
+          opacity: 0.7;
+          cursor: not-allowed;
+          transform: none;
+        }
+
+        .ziliu-copy-markdown-btn:hover:not(:disabled) {
+          background: #1890ff;
+          border-color: #1890ff;
+          color: white;
+          transform: scale(1.05);
+        }
+
+        .ziliu-copy-markdown-btn:disabled {
           opacity: 0.7;
           cursor: not-allowed;
           transform: none;

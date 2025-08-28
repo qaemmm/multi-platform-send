@@ -1,9 +1,56 @@
-// 字流助手 - 微信编辑器操作模块
+// 字流助手 - 多平台编辑器操作模块
 (function() {
   'use strict';
 
   window.ZiliuEditor = {
-    // 查找微信编辑器元素
+    // 检测当前平台并获取对应的编辑器元素
+    detectPlatformAndElements() {
+      try {
+        // 检查平台管理器是否可用
+        if (typeof platformManager === 'undefined') {
+          console.warn('平台管理器未加载，使用传统检测方法');
+          return {
+            platform: 'unknown',
+            platformInstance: null,
+            isEditor: false
+          };
+        }
+
+        const url = window.location.href;
+        console.log('🔍 开始平台检测，URL:', url);
+
+        const platform = platformManager.detectPlatform(url);
+        console.log('🔍 检测到的平台:', platform);
+
+        if (platform) {
+          console.log('🔍 开始查找编辑器元素...');
+          const elements = platform.findEditorElements();
+          console.log('🔍 编辑器元素查找结果:', elements);
+
+          return {
+            platform: platform.name,
+            platformInstance: platform,
+            ...elements
+          };
+        }
+
+        console.log('⚠️ 未检测到支持的平台');
+        return {
+          platform: 'unknown',
+          platformInstance: null,
+          isEditor: false
+        };
+      } catch (error) {
+        console.error('平台检测失败:', error);
+        return {
+          platform: 'unknown',
+          platformInstance: null,
+          isEditor: false
+        };
+      }
+    },
+
+    // 查找微信编辑器元素（保持向后兼容）
     findWeChatEditorElements() {
       const elements = {
         isWeChatEditor: false,

@@ -13,6 +13,7 @@
   "host_permissions": [
     "https://mp.weixin.qq.com/*",
     "http://mp.weixin.qq.com/*",
+    "https://zhuanlan.zhihu.com/*",
     "http://localhost:3000/*",
     "https://localhost:3000/*",
     "http://localhost:3001/*",
@@ -29,6 +30,29 @@
         "http://mp.weixin.qq.com/*"
       ],
       "js": [
+        "platforms/base-platform.js",
+        "platforms/wechat-platform.js",
+        "platforms/zhihu-platform.js",
+        "platforms/platform-manager.js",
+        "constants.js",
+        "utils.js",
+        "api.js",
+        "editor.js",
+        "ui.js",
+        "main.js"
+      ],
+      "run_at": "document_end",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://zhuanlan.zhihu.com/write*"
+      ],
+      "js": [
+        "platforms/base-platform.js",
+        "platforms/wechat-platform.js",
+        "platforms/zhihu-platform.js",
+        "platforms/platform-manager.js",
         "constants.js",
         "utils.js",
         "api.js",

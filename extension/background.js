@@ -1,5 +1,13 @@
 // 字流助手 - 后台脚本
 
+// 导入平台相关文件
+importScripts(
+  'platforms/base-platform.js',
+  'platforms/wechat-platform.js',
+  'platforms/zhihu-platform.js',
+  'platforms/platform-manager.js'
+);
+
 // 安装时的初始化
 chrome.runtime.onInstalled.addListener(() => {
   console.log('字流助手已安装');
@@ -164,49 +172,106 @@ async function handleOneClickPublish(data, sendResponse) {
       }
     });
 
-    // 查找现有的公众号标签页
-    const wechatTabs = await chrome.tabs.query({ url: '*://mp.weixin.qq.com/*' });
-
-    if (wechatTabs.length > 0) {
-      // 如果有公众号页面，激活第一个并填充内容
-      const targetTab = wechatTabs[0];
-      await chrome.tabs.update(targetTab.id, { active: true });
-
-      // 等待一下确保页面激活
-      setTimeout(() => {
-        chrome.tabs.sendMessage(targetTab.id, {
-          action: 'fillContent',
-          data: data
-        }, (response) => {
-          sendResponse(response || { success: false, error: '填充失败' });
-        });
-      }, 500);
+    // 尝试使用新的平台管理器处理发布
+    if (typeof platformManager !== 'undefined') {
+      const result = await platformManager.handlePublish(data);
+      sendResponse(result);
     } else {
-      // 如果没有公众号页面，打开新的
-      const newTab = await chrome.tabs.create({
-        url: 'https://mp.weixin.qq.com/',
-        active: true
-      });
-
-      // 等待页面加载完成后再填充
-      chrome.tabs.onUpdated.addListener(function listener(tabId, changeInfo) {
-        if (tabId === newTab.id && changeInfo.status === 'complete') {
-          chrome.tabs.onUpdated.removeListener(listener);
-
-          setTimeout(() => {
-            chrome.tabs.sendMessage(newTab.id, {
-              action: 'fillContent',
-              data: data
-            }, (response) => {
-              sendResponse(response || { success: false, error: '填充失败' });
-            });
-          }, 2000); // 给页面更多时间加载
-        }
-      });
+      // 回退到原来的微信公众号逻辑
+      console.warn('平台管理器未加载，使用传统发布方法');
+      await handleWeChatPublishLegacy(data, sendResponse);
     }
   } catch (error) {
     console.error('一键发布失败:', error);
     sendResponse({ success: false, error: error.message });
+  }
+}
+
+// 处理知乎发布
+async function handleZhihuPublish(data, sendResponse) {
+  // 查找现有的知乎编辑页面
+  const zhihuTabs = await chrome.tabs.query({ url: '*://zhuanlan.zhihu.com/write*' });
+
+  if (zhihuTabs.length > 0) {
+    // 如果有知乎编辑页面，激活第一个并填充内容
+    const targetTab = zhihuTabs[0];
+    await chrome.tabs.update(targetTab.id, { active: true });
+
+    // 等待一下确保页面激活
+    setTimeout(() => {
+      chrome.tabs.sendMessage(targetTab.id, {
+        action: 'fillContent',
+        data: data
+      }, (response) => {
+        sendResponse(response || { success: false, error: '填充失败' });
+      });
+    }, 500);
+  } else {
+    // 如果没有知乎编辑页面，打开新的
+    const newTab = await chrome.tabs.create({
+      url: 'https://zhuanlan.zhihu.com/write',
+      active: true
+    });
+
+    // 等待页面加载完成后再填充
+    chrome.tabs.onUpdated.addListener(function listener(tabId, changeInfo) {
+      if (tabId === newTab.id && changeInfo.status === 'complete') {
+        chrome.tabs.onUpdated.removeListener(listener);
+
+        setTimeout(() => {
+          chrome.tabs.sendMessage(newTab.id, {
+            action: 'fillContent',
+            data: data
+          }, (response) => {
+            sendResponse(response || { success: false, error: '填充失败' });
+          });
+        }, 2000); // 给页面更多时间加载
+      }
+    });
+  }
+}
+
+// 传统的微信公众号发布方法（保持向后兼容）
+async function handleWeChatPublishLegacy(data, sendResponse) {
+  // 查找现有的公众号标签页
+  const wechatTabs = await chrome.tabs.query({ url: '*://mp.weixin.qq.com/*' });
+
+  if (wechatTabs.length > 0) {
+    // 如果有公众号页面，激活第一个并填充内容
+    const targetTab = wechatTabs[0];
+    await chrome.tabs.update(targetTab.id, { active: true });
+
+    // 等待一下确保页面激活
+    setTimeout(() => {
+      chrome.tabs.sendMessage(targetTab.id, {
+        action: 'fillContent',
+        data: data
+      }, (response) => {
+        sendResponse(response || { success: false, error: '填充失败' });
+      });
+    }, 500);
+  } else {
+    // 如果没有公众号页面，打开新的
+    const newTab = await chrome.tabs.create({
+      url: 'https://mp.weixin.qq.com/',
+      active: true
+    });
+
+    // 等待页面加载完成后再填充
+    chrome.tabs.onUpdated.addListener(function listener(tabId, changeInfo) {
+      if (tabId === newTab.id && changeInfo.status === 'complete') {
+        chrome.tabs.onUpdated.removeListener(listener);
+
+        setTimeout(() => {
+          chrome.tabs.sendMessage(newTab.id, {
+            action: 'fillContent',
+            data: data
+          }, (response) => {
+            sendResponse(response || { success: false, error: '填充失败' });
+          });
+        }, 2000); // 给页面更多时间加载
+      }
+    });
   }
 }
 

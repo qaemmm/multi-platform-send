@@ -107,6 +107,20 @@
       }
     },
 
+    // 获取文章原始Markdown内容
+    async fetchArticleMarkdown(articleId) {
+      try {
+        const data = await this.makeRequest(`/api/articles/${articleId}?format=raw`);
+        if (!data.success) {
+          throw new Error(data.error || '获取文章失败');
+        }
+        return data.data;
+      } catch (error) {
+        console.error('获取文章Markdown失败:', error);
+        throw error;
+      }
+    },
+
     // 转换文章格式
     async convertArticleFormat(content, platform = 'wechat', style = 'default') {
       try {
