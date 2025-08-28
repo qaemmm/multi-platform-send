@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { db, articles } from '@/lib/db';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, count } from 'drizzle-orm';
 import { z } from 'zod';
 import { countWords, calculateReadingTime } from '@/lib/utils';
 
@@ -10,9 +10,12 @@ function setCorsHeaders(response: NextResponse, request?: NextRequest) {
   // 获取请求的origin
   const origin = request?.headers.get('origin');
 
+  // 从环境变量获取应用URL
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
   // 允许的源列表
   const allowedOrigins = [
-    'http://localhost:3000',
+    appUrl,
     'https://mp.weixin.qq.com',
     // Chrome扩展的origin格式
   ];
@@ -23,7 +26,7 @@ function setCorsHeaders(response: NextResponse, request?: NextRequest) {
   } else if (origin && allowedOrigins.includes(origin)) {
     response.headers.set('Access-Control-Allow-Origin', origin);
   } else {
-    response.headers.set('Access-Control-Allow-Origin', 'http://localhost:3000');
+    response.headers.set('Access-Control-Allow-Origin', appUrl);
   }
 
   response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -41,7 +44,7 @@ export async function OPTIONS(request: NextRequest) {
 const createArticleSchema = z.object({
   title: z.string().min(1, '标题不能为空').max(500, '标题过长'),
   content: z.string().min(1, '内容不能为空'),
-  status: z.enum(['draft', 'published']).default('draft'),
+  status: z.enum(['draft', 'published']).default('published'),
 });
 
 // 创建文章
@@ -123,6 +126,10 @@ export async function GET(request: NextRequest) {
       // 这里需要添加状态过滤，但为了简化先不实现
     }
 
+    // 查询总数
+    const [totalResult] = await db.select({ count: count() }).from(articles).where(whereCondition);
+    const total = totalResult.count;
+
     // 查询文章
     const userArticles = await db.query.articles.findMany({
       where: whereCondition,
@@ -135,10 +142,12 @@ export async function GET(request: NextRequest) {
       success: true,
       data: {
         articles: userArticles,
+        total,
         pagination: {
           page,
           limit,
-          total: userArticles.length, // 简化实现，实际应该查询总数
+          total,
+          totalPages: Math.ceil(total / limit),
         },
       },
     });

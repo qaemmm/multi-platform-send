@@ -11,3 +11,286 @@ body {
   color: #111827;
   font-family: ui-sans-serif, system-ui, sans-serif;
 }
+
+/* 平台预览样式 */
+.wechat-content {
+  line-height: 1.8;
+  color: #333;
+  font-size: 14px;
+}
+
+.wechat-content h1,
+.wechat-content h2,
+.wechat-content h3 {
+  color: #2c3e50;
+  margin: 1.5em 0 0.8em 0;
+  font-weight: 600;
+}
+
+.wechat-content h1 {
+  font-size: 18px;
+  border-bottom: 2px solid #3498db;
+  padding-bottom: 0.3em;
+}
+
+.wechat-content h2 {
+  font-size: 16px;
+}
+
+.wechat-content h3 {
+  font-size: 15px;
+}
+
+.wechat-content p {
+  margin: 1em 0;
+  text-align: justify;
+}
+
+.wechat-content blockquote {
+  border-left: 4px solid #3498db;
+  background: #f8f9fa;
+  padding: 1em;
+  margin: 1.5em 0;
+  border-radius: 4px;
+}
+
+.wechat-content code {
+  background: #f1f2f6;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-family: 'Monaco', 'Menlo', monospace;
+  font-size: 13px;
+}
+
+.wechat-content pre {
+  background: #2d3748;
+  color: #e2e8f0;
+  padding: 1em;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 1.5em 0;
+}
+
+.wechat-content pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
+}
+
+.wechat-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  margin: 1em 0;
+}
+
+.wechat-content ul,
+.wechat-content ol {
+  margin: 1em 0;
+  padding-left: 1.5em;
+}
+
+.wechat-content li {
+  margin: 0.5em 0;
+}
+
+/* 知乎样式 */
+.zhihu-content {
+  line-height: 1.7;
+  color: #1a202c;
+  font-size: 16px;
+}
+
+.zhihu-content h1,
+.zhihu-content h2,
+.zhihu-content h3 {
+  color: #1a202c;
+  margin: 2em 0 1em 0;
+  font-weight: 600;
+}
+
+.zhihu-content h1 {
+  font-size: 24px;
+}
+
+.zhihu-content h2 {
+  font-size: 20px;
+}
+
+.zhihu-content h3 {
+  font-size: 18px;
+}
+
+.zhihu-content p {
+  margin: 1.2em 0;
+}
+
+.zhihu-content blockquote {
+  border-left: 3px solid #0084ff;
+  background: #f6f8fa;
+  padding: 1em 1.5em;
+  margin: 1.5em 0;
+  font-style: italic;
+}
+
+.zhihu-content code {
+  background: #f6f8fa;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: 14px;
+}
+
+.zhihu-content pre {
+  background: #f6f8fa;
+  padding: 1.2em;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 1.5em 0;
+  border: 1px solid #e1e4e8;
+}
+
+.zhihu-content pre code {
+  background: none;
+  padding: 0;
+}
+
+/* 掘金样式 */
+.juejin-content {
+  line-height: 1.7;
+  color: #2e3135;
+  font-size: 16px;
+}
+
+.juejin-content h1,
+.juejin-content h2,
+.juejin-content h3 {
+  color: #2e3135;
+  margin: 2em 0 1em 0;
+  font-weight: 600;
+}
+
+.juejin-content h1 {
+  font-size: 24px;
+}
+
+.juejin-content h2 {
+  font-size: 20px;
+}
+
+.juejin-content h3 {
+  font-size: 18px;
+}
+
+.juejin-content p {
+  margin: 1.2em 0;
+}
+
+.juejin-content blockquote {
+  border-left: 4px solid #1e80ff;
+  background: #f4f5f5;
+  padding: 1em 1.5em;
+  margin: 1.5em 0;
+}
+
+.juejin-content code {
+  background: #f4f5f5;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: 14px;
+  color: #476582;
+}
+
+.juejin-content pre {
+  background: #282c34;
+  color: #abb2bf;
+  padding: 1.2em;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 1.5em 0;
+}
+
+.juejin-content pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
+}
+
+/* 小红书样式 */
+.xiaohongshu-content {
+  line-height: 1.6;
+  color: #333;
+  font-size: 14px;
+}
+
+.xiaohongshu-content h1,
+.xiaohongshu-content h2,
+.xiaohongshu-content h3 {
+  color: #333;
+  margin: 1.5em 0 0.8em 0;
+  font-weight: 600;
+}
+
+.xiaohongshu-content h1 {
+  font-size: 17px;
+}
+
+.xiaohongshu-content h2 {
+  font-size: 16px;
+}
+
+.xiaohongshu-content h3 {
+  font-size: 15px;
+}
+
+.xiaohongshu-content p {
+  margin: 1em 0;
+}
+
+.xiaohongshu-content blockquote {
+  border-left: 3px solid #ff2442;
+  background: #fff5f5;
+  padding: 0.8em 1em;
+  margin: 1.2em 0;
+  border-radius: 4px;
+}
+
+.xiaohongshu-content code {
+  background: #f5f5f5;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-family: Monaco, monospace;
+  font-size: 13px;
+}
+
+.xiaohongshu-content pre {
+  background: #f5f5f5;
+  padding: 1em;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 1.2em 0;
+  border: 1px solid #e0e0e0;
+}
+
+.xiaohongshu-content pre code {
+  background: none;
+  padding: 0;
+}
+
+.xiaohongshu-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 1em 0;
+}
+
+.xiaohongshu-content ul,
+.xiaohongshu-content ol {
+  margin: 1em 0;
+  padding-left: 1.2em;
+}
+
+.xiaohongshu-content li {
+  margin: 0.4em 0;
+}

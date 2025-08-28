@@ -110,15 +110,16 @@ export async function PUT(
       headerContent,
       footerContent,
       isDefault,
+      platformConfig,
     } = body;
 
-    // 如果设置为默认预设，先取消其他预设的默认状态
+    // 如果设置为默认预设，先取消同平台其他预设的默认状态
     if (isDefault && !existingPreset.isDefault) {
       await db.update(publishPresets)
         .set({ isDefault: false })
         .where(and(
           eq(publishPresets.userId, user.id),
-          eq(publishPresets.id, id)
+          eq(publishPresets.platform, existingPreset.platform)
         ));
     }
 
@@ -131,6 +132,7 @@ export async function PUT(
         headerContent,
         footerContent,
         isDefault,
+        platformConfig: platformConfig ? JSON.stringify(platformConfig) : null,
         updatedAt: new Date(),
       })
       .where(and(

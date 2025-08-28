@@ -89,12 +89,34 @@
         if (elements.contentEditor && data.content) {
           console.log('📄 填充正文内容');
 
+          // 构建完整内容：开头 + 正文 + 结尾
+          let fullContent = data.content;
+
+          // 如果有预设，应用开头和结尾内容
+          if (data.preset) {
+            console.log('🔧 应用发布预设:', data.preset.name);
+
+            // 转换开头内容的Markdown为HTML
+            if (data.preset.headerContent) {
+              const headerHtml = await this.convertMarkdownToHtml(data.preset.headerContent);
+              fullContent = headerHtml + fullContent;
+              console.log('✅ 开头内容已添加并转换为HTML');
+            }
+
+            // 转换结尾内容的Markdown为HTML
+            if (data.preset.footerContent) {
+              const footerHtml = await this.convertMarkdownToHtml(data.preset.footerContent);
+              fullContent = fullContent + footerHtml;
+              console.log('✅ 结尾内容已添加并转换为HTML');
+            }
+          }
+
           // 处理特殊语法（如 {{featured-articles:10}}）
           console.log('🔄 处理特殊语法...');
-          const processedContent = await ZiliuUtils.processSpecialSyntax(data.content);
+          const processedContent = await ZiliuUtils.processSpecialSyntax(fullContent);
 
           const cleanContent = ZiliuUtils.cleanHtmlContent(processedContent);
-          const contentSuccess = ZiliuUtils.setRichTextContent(elements.contentEditor, cleanContent);
+          const contentSuccess = await ZiliuUtils.setRichTextContent(elements.contentEditor, cleanContent);
           if (!contentSuccess) {
             console.warn('⚠️ 正文内容填充失败');
             success = false;
@@ -146,7 +168,7 @@
     },
 
     // 清空编辑器内容
-    clearContent() {
+    async clearContent() {
       const elements = this.findWeChatEditorElements();
       
       if (!elements.isWeChatEditor) {
@@ -161,7 +183,7 @@
           ZiliuUtils.simulateInput(elements.authorInput, '');
         }
         if (elements.contentEditor) {
-          ZiliuUtils.setRichTextContent(elements.contentEditor, '');
+          await ZiliuUtils.setRichTextContent(elements.contentEditor, '');
         }
         if (elements.summaryInput) {
           ZiliuUtils.simulateInput(elements.summaryInput, '');
@@ -174,6 +196,57 @@
         ZiliuUtils.showNotification('清空内容失败', 'error');
         return false;
       }
+    },
+
+    // 将Markdown转换为HTML
+    async convertMarkdownToHtml(markdown) {
+      try {
+        console.log('🔄 转换Markdown为HTML:', markdown.substring(0, 50) + '...');
+
+        // 使用ZiliuAPI来调用转换接口，这样会自动使用配置的baseUrl
+        const data = await ZiliuAPI.makeRequest('/api/convert', {
+          method: 'POST',
+          body: {
+            content: markdown,
+            platform: (window.ZiliuConstants?.DEFAULTS?.PLATFORM) || 'wechat',
+            style: (window.ZiliuConstants?.DEFAULTS?.STYLE) || 'default'
+          }
+        });
+
+        if (data.success && data.data.inlineHtml) {
+          console.log('✅ Markdown转换成功');
+          return data.data.inlineHtml;
+        } else {
+          console.warn('⚠️ Markdown转换失败，使用简单转换');
+          return this.simpleMarkdownToHtml(markdown);
+        }
+      } catch (error) {
+        console.warn('⚠️ 调用转换API失败，使用简单转换:', error);
+        return this.simpleMarkdownToHtml(markdown);
+      }
+    },
+
+    // 简单的Markdown到HTML转换（降级方案）
+    simpleMarkdownToHtml(markdown) {
+      return markdown
+        // 标题
+        .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+        .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+        .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+        // 粗体
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        // 斜体
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        // 引用
+        .replace(/^> (.*$)/gim, '<blockquote>$1</blockquote>')
+        // 分割线
+        .replace(/^---$/gim, '<hr>')
+        // 链接
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
+        // 图片
+        .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width: 100%; height: auto;" />')
+        // 换行
+        .replace(/\n/g, '<br>');
     }
   };
 

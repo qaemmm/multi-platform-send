@@ -2,7 +2,22 @@
 (function() {
   'use strict';
 
-  console.log(`🚀 Ziliu 微信公众号插件 v${ZiliuConstants.VERSION} 已加载 - 模块化版本`);
+  // 初始化API基础URL
+  if (window.ZiliuInit) {
+    window.ZiliuInit.initApiBaseUrl();
+  }
+
+  // 监听配置更新消息
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === 'configUpdated') {
+      console.log('字流助手: 配置已更新', message.config);
+      if (window.ZiliuConstants && message.config.apiBaseUrl) {
+        window.ZiliuConstants.API_BASE_URL = message.config.apiBaseUrl;
+      }
+    }
+  });
+
+  console.log(`🚀 Ziliu 微信公众号插件已加载 - 模块化版本`);
 
   // 主控制器
   window.ZiliuController = {
@@ -59,7 +74,7 @@
 
       // 打开字流网站
       document.getElementById('ziliu-open-website')?.addEventListener('click', () => {
-        window.open(`${ZiliuConstants.API_BASE_URL}`, '_blank');
+        window.open(`${window.ZiliuConstants?.API_BASE_URL || 'http://localhost:3000'}`, '_blank');
       });
 
       // 重新检查登录状态
@@ -377,7 +392,7 @@
         const fillData = {
           title: articleDetail.title,
           content: htmlToFill,
-          author: this.state.selectedPreset?.author || '孟健',
+          author: this.state.selectedPreset?.authorName || '孟健',
           summary: articleDetail.summary || '',
           preset: this.state.selectedPreset
         };
@@ -428,7 +443,7 @@
 
     // 编辑文章
     editArticle(articleId) {
-      const editUrl = `http://localhost:3000/editor/${articleId}`;
+      const editUrl = `${window.ZiliuConstants?.API_BASE_URL || 'http://localhost:3000'}/editor/${articleId}`;
       window.open(editUrl, '_blank');
     },
 

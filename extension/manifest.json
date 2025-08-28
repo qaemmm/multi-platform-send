@@ -18,7 +18,9 @@
     "http://localhost:3001/*",
     "https://localhost:3001/*",
     "https://ziliu.app/*",
-    "http://ziliu.app/*"
+    "http://ziliu.app/*",
+    "https://*/*",
+    "http://*/*"
   ],
   "content_scripts": [
     {
@@ -27,6 +29,7 @@
         "http://mp.weixin.qq.com/*"
       ],
       "js": [
+        "constants.js",
         "utils.js",
         "api.js",
         "editor.js",

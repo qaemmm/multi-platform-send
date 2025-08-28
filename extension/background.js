@@ -95,7 +95,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // 处理API请求（解决跨域cookie问题）
 async function handleApiRequest(requestData) {
-  const API_BASE_URL = 'http://localhost:3000';
+  // 从存储中获取API基础URL，默认为localhost
+  const result = await chrome.storage.sync.get(['apiBaseUrl']);
+  const API_BASE_URL = result.apiBaseUrl || 'http://localhost:3000';
   const { method = 'GET', endpoint, body, headers = {} } = requestData;
 
   const url = `${API_BASE_URL}${endpoint}`;

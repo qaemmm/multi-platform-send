@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useParams } from 'next/navigation';
-import { SimpleEditor } from '@/components/editor/simple-editor';
+import { EditorLayout } from '@/components/editor/editor-layout';
 
 interface Article {
   id: string;
@@ -132,12 +132,10 @@ export default function EditArticlePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <SimpleEditor
-        initialTitle={article.title}
-        initialContent={article.content}
-        onSave={handleSave}
-      />
-    </div>
+    <EditorLayout
+      initialTitle={article.title}
+      initialContent={article.content}
+      onSave={handleSave}
+    />
   );
 }

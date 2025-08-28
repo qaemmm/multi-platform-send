@@ -3,7 +3,7 @@
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { SimpleEditor } from '@/components/editor/simple-editor';
+import { EditorLayout } from '@/components/editor/editor-layout';
 
 export default function NewEditorPage() {
   const { data: session, status } = useSession();
@@ -60,8 +60,6 @@ export default function NewEditorPage() {
   }
 
   return (
-    <div className="h-screen">
-      <SimpleEditor onSave={handleSave} />
-    </div>
+    <EditorLayout onSave={handleSave} />
   );
 }

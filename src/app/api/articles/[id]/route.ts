@@ -9,9 +9,12 @@ function setCorsHeaders(response: NextResponse, request?: NextRequest) {
   // 获取请求的origin
   const origin = request?.headers.get('origin');
 
+  // 从环境变量获取应用URL
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
   // 允许的源列表
   const allowedOrigins = [
-    'http://localhost:3000',
+    appUrl,
     'https://mp.weixin.qq.com',
     // Chrome扩展的origin格式
   ];
@@ -22,7 +25,7 @@ function setCorsHeaders(response: NextResponse, request?: NextRequest) {
   } else if (origin && allowedOrigins.includes(origin)) {
     response.headers.set('Access-Control-Allow-Origin', origin);
   } else {
-    response.headers.set('Access-Control-Allow-Origin', 'http://localhost:3000');
+    response.headers.set('Access-Control-Allow-Origin', appUrl);
   }
 
   response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');

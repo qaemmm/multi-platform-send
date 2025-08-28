@@ -5,7 +5,7 @@ import { z } from 'zod';
 // 请求验证schema
 const convertSchema = z.object({
   content: z.string().min(1, '内容不能为空'),
-  platform: z.enum(['wechat']).default('wechat'),
+  platform: z.enum(['wechat', 'zhihu', 'juejin', 'xiaohongshu']).default('wechat'),
   style: z.enum(['default', 'tech', 'minimal']).default('default'),
 });
 
@@ -14,19 +14,13 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { content, platform, style } = convertSchema.parse(body);
 
-    if (platform === 'wechat') {
-      const result = previewConversion(content, style as keyof typeof WECHAT_STYLES);
-
-      return NextResponse.json({
-        success: true,
-        data: result,
-      });
-    }
+    // 所有平台都使用相同的转换逻辑，只是样式不同
+    const result = previewConversion(content, style as keyof typeof WECHAT_STYLES);
 
     return NextResponse.json({
-      success: false,
-      error: '暂不支持该平台',
-    }, { status: 400 });
+      success: true,
+      data: result,
+    });
   } catch (error) {
     console.error('Convert error:', error);
 
@@ -53,7 +47,7 @@ export async function GET() {
       success: true,
       data: {
         styles,
-        platforms: ['wechat'],
+        platforms: ['wechat', 'zhihu', 'juejin', 'xiaohongshu'],
       },
     });
   } catch (error) {

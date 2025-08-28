@@ -4,7 +4,7 @@
 
   // 全局常量
   window.ZiliuConstants = {
-    API_BASE_URL: 'http://localhost:3000',
+    API_BASE_URL: null, // 将在初始化时从存储中获取
     PANEL_ID: 'ziliu-assistant-panel',
     VERSION: '3.0',
     SELECTORS: {
@@ -12,6 +12,32 @@
       AUTHOR_INPUT: '#js_author',
       CONTENT_EDITOR: '#js_editor_insertimg',
       SUMMARY_INPUT: '#js_digest'
+    }
+  };
+
+  // 初始化函数
+  window.ZiliuInit = {
+    // 初始化API基础URL
+    async initApiBaseUrl() {
+      try {
+        const result = await chrome.storage.sync.get(['apiBaseUrl']);
+        window.ZiliuConstants.API_BASE_URL = result.apiBaseUrl || 'http://localhost:3000';
+        console.log('字流助手: API基础URL已设置为', window.ZiliuConstants.API_BASE_URL);
+      } catch (error) {
+        console.error('字流助手: 获取API基础URL失败，使用默认值', error);
+        window.ZiliuConstants.API_BASE_URL = 'http://localhost:3000';
+      }
+    },
+
+    // 设置API基础URL
+    async setApiBaseUrl(url) {
+      try {
+        await chrome.storage.sync.set({ apiBaseUrl: url });
+        window.ZiliuConstants.API_BASE_URL = url;
+        console.log('字流助手: API基础URL已更新为', url);
+      } catch (error) {
+        console.error('字流助手: 设置API基础URL失败', error);
+      }
     }
   };
 
@@ -74,43 +100,30 @@
     },
 
     // 设置富文本编辑器内容（静默模式，支持ProseMirror）
-    setRichTextContent: (element, htmlContent) => {
+    setRichTextContent: async (element, htmlContent) => {
       if (!element) return false;
 
       try {
-        // 检查是否是ProseMirror编辑器
-        if (element.classList.contains('ProseMirror')) {
-          // 对于ProseMirror编辑器，需要特殊处理
-          // 先清空现有内容
-          element.innerHTML = '';
+        // 显示loading提示
+        const loadingOverlay = ZiliuUtils.showLoadingOverlay(element);
 
-          // 创建临时容器解析HTML
-          const tempDiv = document.createElement('div');
-          tempDiv.innerHTML = htmlContent;
+        try {
+          // 先预处理图片，转换外链为微信CDN
+          console.log('🖼️ 开始预处理图片...');
+          const processedContent = await ZiliuUtils.preProcessImages(htmlContent);
 
-          // 将解析后的内容逐个添加到编辑器
-          Array.from(tempDiv.childNodes).forEach(node => {
-            element.appendChild(node.cloneNode(true));
-          });
-        } else {
-          // 传统富文本编辑器
-          element.innerHTML = htmlContent;
+          // 先聚焦编辑器
+          element.focus();
+          element.innerHTML = processedContent;
+
+          // 触发微信自动保存和字数更新
+          ZiliuUtils.triggerWeChatAutoSave(element);
+
+          return true;
+        } finally {
+          // 隐藏loading提示
+          ZiliuUtils.hideLoadingOverlay(loadingOverlay);
         }
-
-        // 触发必要的事件
-        ['input', 'change', 'keyup'].forEach(eventType => {
-          const event = new Event(eventType, { bubbles: true });
-          element.dispatchEvent(event);
-        });
-
-        // 对于ProseMirror，还需要触发特殊事件
-        if (element.classList.contains('ProseMirror')) {
-          // 触发ProseMirror的更新事件
-          const proseMirrorEvent = new Event('prosemirror-update', { bubbles: true });
-          element.dispatchEvent(proseMirrorEvent);
-        }
-
-        return true;
       } catch (error) {
         console.error('设置富文本内容失败:', error);
         return false;
@@ -216,6 +229,305 @@
     generateId: () => {
       return 'ziliu_' + Math.random().toString(36).substr(2, 9);
     },
+
+    // 显示loading覆盖层
+    showLoadingOverlay: (targetElement) => {
+      // 创建loading覆盖层
+      const overlay = document.createElement('div');
+      overlay.id = 'ziliu-loading-overlay';
+      overlay.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        border-radius: 6px;
+        backdrop-filter: blur(2px);
+      `;
+
+      // 创建loading内容
+      const loadingContent = document.createElement('div');
+      loadingContent.style.cssText = `
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+        padding: 20px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e1e5e9;
+      `;
+
+      // 创建spinner
+      const spinner = document.createElement('div');
+      spinner.style.cssText = `
+        width: 24px;
+        height: 24px;
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #1890ff;
+        border-radius: 50%;
+        animation: ziliu-spin 1s linear infinite;
+      `;
+
+      // 添加CSS动画
+      if (!document.getElementById('ziliu-loading-styles')) {
+        const style = document.createElement('style');
+        style.id = 'ziliu-loading-styles';
+        style.textContent = `
+          @keyframes ziliu-spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `;
+        document.head.appendChild(style);
+      }
+
+      // 创建文本
+      const text = document.createElement('div');
+      text.textContent = '正在处理图片，请稍候...';
+      text.style.cssText = `
+        color: #666;
+        font-size: 14px;
+        font-weight: 500;
+      `;
+
+      loadingContent.appendChild(spinner);
+      loadingContent.appendChild(text);
+      overlay.appendChild(loadingContent);
+
+      // 找到合适的父容器
+      const container = targetElement.closest('.ProseMirror') ||
+                       targetElement.closest('[contenteditable]') ||
+                       targetElement.parentElement;
+
+      if (container) {
+        // 确保容器有相对定位
+        const originalPosition = container.style.position;
+        if (!originalPosition || originalPosition === 'static') {
+          container.style.position = 'relative';
+        }
+
+        container.appendChild(overlay);
+
+        // 保存原始位置信息，用于恢复
+        overlay._originalPosition = originalPosition;
+      }
+
+      return overlay;
+    },
+
+    // 隐藏loading覆盖层
+    hideLoadingOverlay: (overlay) => {
+      if (overlay && overlay.parentElement) {
+        // 恢复原始位置
+        if (overlay._originalPosition !== undefined) {
+          overlay.parentElement.style.position = overlay._originalPosition;
+        }
+        overlay.parentElement.removeChild(overlay);
+      }
+    },
+
+    // 触发微信自动保存和字数更新
+    triggerWeChatAutoSave: (element) => {
+      try {
+        console.log('🔄 触发微信自动保存和字数更新...');
+
+        // 触发各种可能的事件来让微信更新字数和自动保存
+        const events = [
+          'input',
+          'change',
+          'keyup',
+          'paste',
+          'blur',
+          'focus'
+        ];
+
+        events.forEach(eventType => {
+          try {
+            const event = new Event(eventType, {
+              bubbles: true,
+              cancelable: true
+            });
+            element.dispatchEvent(event);
+          } catch (e) {
+            console.warn(`触发${eventType}事件失败:`, e);
+          }
+        });
+
+        // 特别触发input事件（微信最常用的字数更新触发器）
+        try {
+          const inputEvent = new InputEvent('input', {
+            bubbles: true,
+            cancelable: true,
+            inputType: 'insertText',
+            data: ' '
+          });
+          element.dispatchEvent(inputEvent);
+        } catch (e) {
+          console.warn('触发InputEvent失败:', e);
+        }
+
+        // 模拟键盘事件
+        try {
+          const keyboardEvent = new KeyboardEvent('keydown', {
+            bubbles: true,
+            cancelable: true,
+            key: ' ',
+            code: 'Space'
+          });
+          element.dispatchEvent(keyboardEvent);
+        } catch (e) {
+          console.warn('触发KeyboardEvent失败:', e);
+        }
+
+        // 延迟触发一次额外的input事件，确保微信检测到变化
+        setTimeout(() => {
+          try {
+            const delayedEvent = new Event('input', {
+              bubbles: true,
+              cancelable: true
+            });
+            element.dispatchEvent(delayedEvent);
+            console.log('✅ 延迟触发事件完成');
+          } catch (e) {
+            console.warn('延迟触发事件失败:', e);
+          }
+        }, 100);
+
+        console.log('✅ 微信自动保存触发完成');
+      } catch (error) {
+        console.error('❌ 触发微信自动保存失败:', error);
+      }
+    },
+
+    // 预处理图片，将外链图片转换为微信CDN
+    preProcessImages: async (htmlContent) => {
+      if (!htmlContent) return htmlContent;
+
+      console.log('🔍 开始分析HTML中的图片...');
+
+      // 创建临时DOM来解析HTML
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = htmlContent;
+
+      // 查找所有外链图片
+      const images = Array.from(tempDiv.querySelectorAll('img')).filter(img => {
+        const src = img.src || img.getAttribute('src');
+        return src && !src.includes('mmbiz.qpic.cn') && !src.startsWith('data:') && src.startsWith('http');
+      });
+
+      if (images.length === 0) {
+        console.log('✅ 没有发现需要转换的外链图片');
+        return htmlContent;
+      }
+
+      console.log(`🖼️ 发现 ${images.length} 个外链图片，开始转换...`);
+
+      // 并行转换所有图片
+      const conversionPromises = images.map(async (img, index) => {
+        const originalSrc = img.src || img.getAttribute('src');
+        console.log(`📤 转换图片 ${index + 1}/${images.length}: ${originalSrc}`);
+
+        try {
+          const cdnUrl = await ZiliuUtils.uploadImageToCDN(originalSrc);
+          if (cdnUrl) {
+            img.src = cdnUrl;
+            img.setAttribute('src', cdnUrl);
+            console.log(`✅ 图片 ${index + 1} 转换成功: ${cdnUrl}`);
+            return true;
+          } else {
+            console.warn(`⚠️ 图片 ${index + 1} 转换失败，保留原链接`);
+            return false;
+          }
+        } catch (error) {
+          console.error(`❌ 图片 ${index + 1} 转换出错:`, error);
+          return false;
+        }
+      });
+
+      // 等待所有转换完成
+      const results = await Promise.all(conversionPromises);
+      const successCount = results.filter(Boolean).length;
+
+      console.log(`🎉 图片转换完成: ${successCount}/${images.length} 成功`);
+
+      return tempDiv.innerHTML;
+    },
+
+    // 上传图片到微信CDN
+    uploadImageToCDN: async (imageUrl) => {
+      try {
+        console.log('📡 调用微信uploadimg2cdn接口:', imageUrl);
+
+        // 获取当前页面的token
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+
+        if (!token) {
+          console.error('❌ 无法获取微信token');
+          return null;
+        }
+
+        // 构造请求参数（模拟微信真实的调用方式）
+        const params = new URLSearchParams();
+        params.append('t', 'ajax-editor-upload-img');
+        params.append('imgUrl', imageUrl);
+        params.append('fingerprint', '51f8b9142b4e2f07f988b65243451047'); // 使用观察到的fingerprint
+        params.append('token', token);
+        params.append('lang', 'zh_CN');
+        params.append('f', 'json');
+        params.append('ajax', '1');
+
+        // 使用XMLHttpRequest模拟微信的真实调用
+        const response = await new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', `/cgi-bin/uploadimg2cdn?lang=zh_CN&token=${token}&t=${Math.random()}`);
+          xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded; charset=UTF-8');
+          xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+
+          xhr.onload = () => {
+            if (xhr.status === 200) {
+              try {
+                const result = JSON.parse(xhr.responseText);
+                resolve(result);
+              } catch (e) {
+                reject(new Error('响应解析失败: ' + xhr.responseText));
+              }
+            } else {
+              reject(new Error(`请求失败: ${xhr.status} ${xhr.statusText}`));
+            }
+          };
+
+          xhr.onerror = () => reject(new Error('网络错误'));
+          xhr.ontimeout = () => reject(new Error('请求超时'));
+          xhr.timeout = 30000; // 30秒超时
+
+          xhr.send(params.toString());
+        });
+
+        console.log('📥 上传响应:', response);
+
+        if (response && response.errcode === 0 && response.url) {
+          console.log('✅ 图片上传成功:', response.url);
+          return response.url;
+        } else {
+          console.error('❌ 上传响应格式异常:', response);
+          return null;
+        }
+
+      } catch (error) {
+        console.error('❌ 上传图片到CDN失败:', error);
+        return null;
+      }
+    },
+
+
 
     // 处理特殊语法（如 {{featured-articles:10}}）
     processSpecialSyntax: async (content) => {

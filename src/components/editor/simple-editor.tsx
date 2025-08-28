@@ -9,6 +9,8 @@ import { Save, FileText, Loader2, Copy, Chrome, ArrowLeft, Upload, Settings, Che
 import Link from 'next/link';
 import { countWords, calculateReadingTime } from '@/lib/utils';
 import { FeishuImportDialog } from './feishu-import-dialog';
+import { ImageUpload } from './image-upload';
+import { EditorToolbar } from './editor-toolbar';
 
 interface EditorProps {
   initialTitle?: string;
@@ -28,7 +30,7 @@ export function SimpleEditor({
   const [isConverting, setIsConverting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const [isCopying, setIsCopying] = useState(false);
+
   const [isPublishing, setIsPublishing] = useState(false);
   const [showFeishuImport, setShowFeishuImport] = useState(false);
   const [isApplyingPreset, setIsApplyingPreset] = useState(false);
@@ -36,6 +38,8 @@ export function SimpleEditor({
   const [presetsLoaded, setPresetsLoaded] = useState(false);
   const [selectedPresetId, setSelectedPresetId] = useState<string>('');
   const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' }>({ visible: false, message: '', type: 'success' });
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ visible: true, message, type });
@@ -43,6 +47,147 @@ export function SimpleEditor({
       setToast((prev) => ({ ...prev, visible: false }));
     }, 2000);
   };
+
+  // 处理图片上传成功
+  const handleImageUpload = useCallback((url: string, fileName: string) => {
+    const markdownImage = `![${fileName}](${url})`;
+    setContent(prev => {
+      // 在光标位置插入图片，如果没有光标位置则在末尾添加
+      const textarea = document.querySelector('textarea') as HTMLTextAreaElement;
+      if (textarea) {
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const newContent = prev.slice(0, start) + markdownImage + prev.slice(end);
+        // 设置新的光标位置
+        setTimeout(() => {
+          textarea.setSelectionRange(start + markdownImage.length, start + markdownImage.length);
+          textarea.focus();
+        }, 0);
+        return newContent;
+      }
+      return prev + '\n\n' + markdownImage;
+    });
+    showToast('图片上传成功', 'success');
+  }, []);
+
+  // 处理图片上传错误
+  const handleImageUploadError = useCallback((error: string) => {
+    showToast(`图片上传失败: ${error}`, 'error');
+  }, []);
+
+  // 插入文本到编辑器
+  const handleInsertText = useCallback((text: string, cursorOffset?: number) => {
+    setContent(prev => {
+      const textarea = document.querySelector('textarea') as HTMLTextAreaElement;
+      if (textarea) {
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const newContent = prev.slice(0, start) + text + prev.slice(end);
+
+        // 设置新的光标位置
+        setTimeout(() => {
+          const newCursorPos = cursorOffset !== undefined
+            ? start + cursorOffset
+            : start + text.length;
+          textarea.setSelectionRange(newCursorPos, newCursorPos);
+          textarea.focus();
+        }, 0);
+
+        return newContent;
+      }
+      return prev + text;
+    });
+  }, []);
+
+  // 切换预览模式
+  const handleTogglePreview = useCallback(() => {
+    setShowPreview(prev => !prev);
+  }, []);
+
+  // 处理拖拽文件到编辑器
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer.types.includes('Files')) {
+      setIsDraggingFile(true);
+    }
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingFile(false);
+  }, []);
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingFile(false);
+
+    const files = Array.from(e.dataTransfer.files);
+    const imageFiles = files.filter(file => file.type.startsWith('image/'));
+
+    if (imageFiles.length === 0) {
+      showToast('请拖拽图片文件', 'error');
+      return;
+    }
+
+    // 上传所有图片
+    for (const file of imageFiles) {
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          handleImageUpload(data.data.url, file.name);
+        } else {
+          throw new Error(data.error || '上传失败');
+        }
+      } catch (error) {
+        handleImageUploadError(error instanceof Error ? error.message : '上传失败');
+      }
+    }
+  }, [handleImageUpload, handleImageUploadError]);
+
+  // 处理粘贴图片
+  const handlePaste = useCallback(async (e: React.ClipboardEvent) => {
+    const items = Array.from(e.clipboardData.items);
+    const imageItems = items.filter(item => item.type.startsWith('image/'));
+
+    if (imageItems.length === 0) return;
+
+    e.preventDefault();
+
+    for (const item of imageItems) {
+      const file = item.getAsFile();
+      if (!file) continue;
+
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          handleImageUpload(data.data.url, `pasted-image-${Date.now()}.png`);
+        } else {
+          throw new Error(data.error || '上传失败');
+        }
+      } catch (error) {
+        handleImageUploadError(error instanceof Error ? error.message : '上传失败');
+      }
+    }
+  }, [handleImageUpload, handleImageUploadError]);
 
   // 当初始值改变时更新状态
   useEffect(() => {
@@ -188,202 +333,9 @@ export function SimpleEditor({
     }
   };
 
-  // 检查Chrome扩展是否已安装
-  const checkExtensionInstalled = () => {
-    return new Promise((resolve) => {
-      if (typeof window !== 'undefined' && typeof (window as any).chrome !== 'undefined' && (window as any).chrome.runtime) {
-        (window as any).chrome.runtime.sendMessage('字流助手扩展ID', { action: 'ping' }, (response: any) => {
-          resolve(!(window as any).chrome.runtime.lastError);
-        });
-      } else {
-        resolve(false);
-      }
-    });
-  };
 
-  // 简化的复制功能（备用方案）
-  const handleCopyContent = async () => {
-    if (!title.trim() || !content.trim()) {
-      alert('请先填写标题和内容');
-      return;
-    }
 
-    if (!preview) {
-      alert('请先生成预览');
-      return;
-    }
 
-    setIsCopying(true);
-    try {
-      // 获取带内联样式的HTML用于公众号编辑器
-      let inlineHtml = preview;
-      try {
-        const response = await fetch('/api/convert-inline', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            content,
-            platform: 'wechat',
-            style: selectedStyle,
-          }),
-        });
-
-        const data = await response.json();
-        if (data.success) {
-          inlineHtml = data.data.inlineHtml;
-        }
-      } catch (error) {
-        console.log('获取内联样式失败，使用预览HTML:', error);
-      }
-
-      // 简化的数据格式
-      const contentData = {
-        title: title.trim(),
-        content: inlineHtml,
-        timestamp: new Date().toISOString(),
-      };
-
-      // 复制到剪贴板（包含特殊标记供插件识别）
-      const clipboardText = `<!-- ZILIU_CONTENT -->${JSON.stringify(contentData)}<!-- /ZILIU_CONTENT -->`;
-      await navigator.clipboard.writeText(clipboardText);
-
-      alert('内容已复制到剪贴板！\n\n请在公众号编辑页面使用字流助手插件填充内容。');
-    } catch (error) {
-      console.error('复制失败:', error);
-      alert('复制失败，请重试');
-    } finally {
-      setIsCopying(false);
-    }
-  };
-
-  // 复制到公众号
-  const handleCopyToWechat = async () => {
-    if (!title.trim() || !content.trim()) {
-      alert('请先填写标题和内容');
-      return;
-    }
-
-    if (!preview) {
-      alert('请先生成预览');
-      return;
-    }
-
-    setIsCopying(true);
-    try {
-      // 获取带内联样式的HTML用于公众号编辑器
-      let inlineHtml = preview;
-      try {
-        const response = await fetch('/api/convert-inline', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            content,
-            platform: 'wechat',
-            style: selectedStyle,
-          }),
-        });
-
-        const data = await response.json();
-        if (data.success) {
-          inlineHtml = data.data.inlineHtml;
-        }
-      } catch (error) {
-        console.log('获取内联样式失败，使用预览HTML:', error);
-      }
-
-      // 预处理HTML，优化为更简洁的格式，避免被微信编辑器过度处理
-      function preprocessContentForWechat(html: string): string {
-        let processedHtml = html;
-
-        // 1. 清理多余的空格和换行，但保持基本结构
-        processedHtml = processedHtml
-          .replace(/\s{3,}/g, ' ')
-          .replace(/>\s+</g, '><')
-          .replace(/(<\/p>)\s*(<p[^>]*>)/g, '$1$2')
-          .replace(/(<\/h[1-6]>)\s*(<[^>]+>)/g, '$1$2');
-
-        // 2. 特殊处理代码块 - 使用微信编辑器友好的预分行格式
-        processedHtml = processedHtml.replace(
-          /<pre><code[^>]*>([\s\S]*?)<\/code><\/pre>/g,
-          (match: string, codeContent: string) => {
-            // 清理代码内容
-            const cleanCode = codeContent
-              .replace(/^\s+|\s+$/g, '') // 去除首尾空白
-              .replace(/&lt;/g, '<')
-              .replace(/&gt;/g, '>')
-              .replace(/&amp;/g, '&');
-
-            // 按行分割代码，每行用单独的div包装
-            const lines = cleanCode.split('\n').filter(line => line.trim() !== '');
-            const codeLines = lines.map(line =>
-              `<div style="margin: 0; padding: 0; line-height: 1.5;">${line.replace(/  /g, '&nbsp;&nbsp;')}</div>`
-            ).join('');
-
-            // 使用div包装整个代码块，确保微信编辑器正确处理
-            return `<div style="background-color: #f6f8fa; border: 1px solid #e1e4e8; border-radius: 6px; padding: 16px; margin: 16px 0; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 14px; overflow-x: auto;">${codeLines}</div>`;
-          }
-        );
-
-        // 3. 简化其他HTML结构
-        processedHtml = processedHtml
-          // 移除可能导致微信编辑器过度处理的class和id属性
-          .replace(/\sclass="[^"]*"/g, '')
-          .replace(/\sid="[^"]*"/g, '')
-          // 将section标签替换为div标签
-          .replace(/<section[^>]*>/g, '<div>')
-          .replace(/<\/section>/g, '</div>')
-          // 简化列表结构
-          .replace(/<li>\s*<p>(.*?)<\/p>\s*<\/li>/g, '<li>$1</li>');
-
-        return processedHtml;
-      }
-
-      // 应用格式优化
-      const optimizedHtml = preprocessContentForWechat(inlineHtml);
-
-      // 创建一个临时的DOM元素来渲染HTML
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = optimizedHtml;
-      tempDiv.style.position = 'absolute';
-      tempDiv.style.left = '-9999px';
-      tempDiv.style.top = '-9999px';
-      document.body.appendChild(tempDiv);
-
-      try {
-        // 创建富文本复制数据
-        const clipboardData = new ClipboardItem({
-          'text/html': new Blob([optimizedHtml], { type: 'text/html' }),
-          'text/plain': new Blob([tempDiv.textContent || tempDiv.innerText || ''], { type: 'text/plain' })
-        });
-
-        // 复制富文本到剪贴板
-        await navigator.clipboard.write([clipboardData]);
-
-        alert('✅ 内容已复制到剪贴板！\n\n请打开微信公众号编辑器，直接粘贴即可保持格式。\n\n💡 提示：粘贴时会保持所有格式，包括标题、代码块、列表等。');
-      } catch (error) {
-        console.error('富文本复制失败，尝试纯文本复制:', error);
-
-        // 降级方案：复制纯文本
-        const plainText = tempDiv.textContent || tempDiv.innerText || '';
-        await navigator.clipboard.writeText(plainText);
-
-        alert('⚠️ 已复制纯文本内容到剪贴板。\n\n由于浏览器限制，无法复制富文本格式。\n建议使用Chrome浏览器以获得最佳体验。');
-      } finally {
-        // 清理临时元素
-        document.body.removeChild(tempDiv);
-      }
-    } catch (error) {
-      console.error('复制失败:', error);
-      const message = error instanceof Error ? error.message : String(error);
-      alert(`复制失败: ${message}`);
-    } finally {
-      setIsCopying(false);
-    }
-  };
 
   return (
     <div className="h-screen flex flex-col">
@@ -470,6 +422,8 @@ export function SimpleEditor({
               导入飞书文档
             </Button>
 
+
+
             <div className="h-4 w-px bg-gray-300"></div>
 
             <select
@@ -482,35 +436,25 @@ export function SimpleEditor({
               <option value="minimal">简约风格</option>
             </select>
 
-            <Button
-              variant="default"
-              size="sm"
-              onClick={handleCopyToWechat}
-              disabled={isCopying || !preview}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              {isCopying ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Copy className="h-4 w-4" />
-              )}
-              复制到公众号
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCopyContent}
-              disabled={isCopying || !preview}
-              title="复制内容到剪贴板，在公众号页面使用插件填充"
-            >
-              {isCopying ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Copy className="h-4 w-4" />
-              )}
-              复制内容
-            </Button>
+            <div className="flex flex-col gap-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center gap-2 text-blue-700">
+                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span className="font-semibold">发布到公众号</span>
+              </div>
+              <div className="text-sm text-gray-600 space-y-2">
+                <p>📝 <strong>第一步：</strong>保存文章（点击上方"保存"按钮）</p>
+                <p>🔌 <strong>第二步：</strong>安装并使用Chrome插件</p>
+                <p>🚀 <strong>第三步：</strong>在公众号编辑页面，插件会自动检测并填充内容</p>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-blue-600">
+                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/>
+                </svg>
+                <span>Chrome插件支持自动填充标题、内容、作者等信息</span>
+              </div>
+            </div>
 
             <Button
               size="sm"
@@ -528,10 +472,32 @@ export function SimpleEditor({
         </div>
       </div>
 
+      {/* 编辑器工具栏 */}
+      <EditorToolbar
+        onInsertText={handleInsertText}
+        onImageUpload={handleImageUpload}
+        onImageUploadError={handleImageUploadError}
+        showPreview={showPreview}
+        onTogglePreview={handleTogglePreview}
+        disabled={isSaving}
+      />
+
       {/* 编辑区域 */}
       <div className="flex-1 flex">
         {/* 编辑器 */}
-        <div className="w-1/2 flex flex-col border-r">
+        <div className={`${showPreview ? 'w-1/2 border-r' : 'w-full'} flex flex-col relative`}>
+          {/* 拖拽覆盖层 */}
+          {isDraggingFile && (
+            <div className="absolute inset-0 z-10 bg-blue-500/10 border-2 border-dashed border-blue-500 flex items-center justify-center">
+              <div className="bg-white rounded-lg p-6 shadow-lg border border-blue-200">
+                <div className="text-center">
+                  <Upload className="h-8 w-8 text-blue-500 mx-auto mb-2" />
+                  <p className="text-sm font-medium text-blue-700">释放以上传图片</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="p-4 border-b">
             <Input
               value={title}
@@ -541,10 +507,16 @@ export function SimpleEditor({
             />
           </div>
 
-          <div className="flex-1 p-4">
+          <div
+            className="flex-1 p-4"
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
             <Textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
+              onPaste={handlePaste}
               placeholder="请输入Markdown内容...
 
 # 示例标题
@@ -561,6 +533,11 @@ console.log('代码示例');
 ```
 
 > 这是一个引用块
+
+💡 提示：
+- 可以直接拖拽图片到编辑器
+- 可以粘贴剪贴板中的图片
+- 点击工具栏的「上传图片」按钮选择文件
 "
               className="h-full resize-none border-none px-0 focus-visible:ring-0 font-mono text-sm"
             />
@@ -568,6 +545,7 @@ console.log('代码示例');
         </div>
 
         {/* 预览区 */}
+        {showPreview && (
         <div className="w-1/2 flex flex-col">
           <div className="p-4 border-b bg-gray-50">
             <h3 className="font-medium text-gray-700">公众号预览（手机视图）</h3>
@@ -673,6 +651,7 @@ console.log('代码示例');
             </div>
           </div>
         </div>
+        )}
       </div>
 
       {/* 飞书导入弹框 */}

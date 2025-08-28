@@ -6,6 +6,12 @@
     // 通用API请求方法
     async makeRequest(endpoint, options = {}) {
       return new Promise((resolve, reject) => {
+        // 检查extension context是否有效
+        if (!chrome.runtime?.id) {
+          reject(new Error('Extension context invalidated. Please refresh the page.'));
+          return;
+        }
+
         chrome.runtime.sendMessage({
           action: 'apiRequest',
           data: {
@@ -16,14 +22,19 @@
           }
         }, (response) => {
           if (chrome.runtime.lastError) {
-            reject(new Error(chrome.runtime.lastError.message));
+            const error = chrome.runtime.lastError.message;
+            if (error.includes('Extension context invalidated')) {
+              reject(new Error('Extension context invalidated. Please refresh the page.'));
+            } else {
+              reject(new Error(error));
+            }
             return;
           }
 
-          if (response.success) {
+          if (response && response.success) {
             resolve(response.data);
           } else {
-            reject(new Error(response.error));
+            reject(new Error(response?.error || 'Unknown API error'));
           }
         });
       });
@@ -36,6 +47,11 @@
         console.log('登录状态检查结果:', data);
         return data.success;
       } catch (error) {
+        if (error.message.includes('Extension context invalidated')) {
+          console.warn('⚠️ 插件上下文已失效，请刷新页面');
+          ZiliuUtils.showNotification('插件需要刷新页面才能正常工作', 'warning');
+          return false;
+        }
         if (error.message.includes('401') || error.message.includes('Unauthorized')) {
           console.log('用户未登录 (401)');
           return false;
@@ -94,7 +110,7 @@
     // 转换文章格式
     async convertArticleFormat(content, platform = 'wechat', style = 'default') {
       try {
-        const data = await this.makeRequest('/api/convert-inline', {
+        const data = await this.makeRequest('/api/convert', {
           method: 'POST',
           body: {
             content: content || '',
@@ -104,13 +120,13 @@
         });
 
         if (data?.success && data.data?.inlineHtml) {
-          console.log('✅ 使用 convert-inline 生成内联 HTML');
+          console.log('✅ 使用 convert API 生成内联样式 HTML');
           return data.data.inlineHtml;
         } else {
           throw new Error('转换结果异常');
         }
       } catch (error) {
-        console.warn('⚠️ 调用 convert-inline 失败，使用原始内容:', error);
+        console.warn('⚠️ 调用 convert API 失败，使用原始内容:', error);
         return content;
       }
     }
