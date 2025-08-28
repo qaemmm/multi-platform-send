@@ -160,11 +160,28 @@
         '<section style="margin: 16px 0; padding: 16px; background: #f6f8fa; border-left: 4px solid #d1d9e0; color: #656d76;">$1</section>'
       );
 
-      // 处理有序列表 - 移动端优化
+      // 处理有序列表 - 用div模拟，避免微信ol问题
       processedHtml = processedHtml.replace(
         /<ol[^>]*>([\s\S]*?)<\/ol>/g,
         (_, content) => {
-          return `<ol style="margin: 16px 0; padding-left: 20px; line-height: 1.8; font-size: 16px;">${content}</ol>`;
+          // 提取所有li内容
+          const listItems = [];
+          let itemMatch;
+          const liRegex = /<li[^>]*>([\s\S]*?)<\/li>/g;
+
+          while ((itemMatch = liRegex.exec(content)) !== null) {
+            listItems.push(itemMatch[1]);
+          }
+
+          // 生成带编号的div列表
+          const numberedItems = listItems.map((item, index) => {
+            return `<div style="margin: 12px 0; padding-left: 0; line-height: 1.8; font-size: 16px; display: flex; align-items: baseline;">
+              <span style="color: #666; font-weight: bold; margin-right: 12px; min-width: 24px; flex-shrink: 0; text-align: right;">${index + 1}.</span>
+              <span style="flex: 1; word-wrap: break-word; overflow-wrap: break-word; line-height: 1.8;">${item}</span>
+            </div>`;
+          }).join('');
+
+          return `<div style="margin: 16px 0; padding: 0;">${numberedItems}</div>`;
         }
       );
 
@@ -176,7 +193,7 @@
         }
       );
 
-      // 处理列表项 - 移动端优化
+      // 处理无序列表项 - 移动端优化
       processedHtml = processedHtml.replace(
         /<li[^>]*>([\s\S]*?)<\/li>/g,
         (_, content) => {
