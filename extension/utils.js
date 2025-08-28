@@ -160,6 +160,30 @@
         '<section style="margin: 16px 0; padding: 16px; background: #f6f8fa; border-left: 4px solid #d1d9e0; color: #656d76;">$1</section>'
       );
 
+      // 处理有序列表 - 移动端优化
+      processedHtml = processedHtml.replace(
+        /<ol[^>]*>([\s\S]*?)<\/ol>/g,
+        (_, content) => {
+          return `<ol style="margin: 16px 0; padding-left: 20px; line-height: 1.8; font-size: 16px;">${content}</ol>`;
+        }
+      );
+
+      // 处理无序列表 - 移动端优化
+      processedHtml = processedHtml.replace(
+        /<ul[^>]*>([\s\S]*?)<\/ul>/g,
+        (_, content) => {
+          return `<ul style="margin: 16px 0; padding-left: 20px; line-height: 1.8; font-size: 16px;">${content}</ul>`;
+        }
+      );
+
+      // 处理列表项 - 移动端优化
+      processedHtml = processedHtml.replace(
+        /<li[^>]*>([\s\S]*?)<\/li>/g,
+        (_, content) => {
+          return `<li style="margin: 8px 0; padding-left: 8px; line-height: 1.8; word-wrap: break-word; overflow-wrap: break-word;">${content}</li>`;
+        }
+      );
+
       return processedHtml;
     },
 
