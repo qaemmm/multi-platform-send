@@ -175,9 +175,9 @@
 
           // 生成带编号的div列表
           const numberedItems = listItems.map((item, index) => {
-            return `<div style="margin: 8px 0; padding-left: 0; line-height: 1.5; font-size: 16px; display: flex; align-items: baseline;">
+            return `<div style="margin: 0; padding-left: 0; line-height: 1.3; font-size: 16px; display: flex; align-items: baseline;">
               <span style="color: #666; font-weight: bold; margin-right: 12px; min-width: 24px; flex-shrink: 0; text-align: right;">${index + 1}.</span>
-              <span style="flex: 1; word-wrap: break-word; overflow-wrap: break-word; line-height: 1.5;">${item}</span>
+              <span style="flex: 1; word-wrap: break-word; overflow-wrap: break-word; line-height: 1.3;">${item}</span>
             </div>`;
           }).join('');
 
