@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Platform } from './multi-platform-editor';
-import { Smartphone, Monitor, Palette, Loader2 } from 'lucide-react';
+import { Smartphone, Monitor, Palette, Loader2, ExternalLink, Send } from 'lucide-react';
 import { PublishSettings } from './publish-settings';
 
 interface PlatformPreviewProps {
@@ -17,6 +17,7 @@ export function PlatformPreview({ title, content }: PlatformPreviewProps) {
   const [isConverting, setIsConverting] = useState(false);
   const [appliedSettings, setAppliedSettings] = useState<any>(null);
   const [finalContent, setFinalContent] = useState('');
+  const [isPublishing, setIsPublishing] = useState(false);
 
   // 平台配置
   const platforms = [
@@ -131,6 +132,108 @@ export function PlatformPreview({ title, content }: PlatformPreviewProps) {
     setSelectedStyle(style as any);
     handlePreview(selectedPlatform, style);
   }, [selectedPlatform, handlePreview]);
+
+  // 获取平台发布URL
+  const getPlatformUrl = (platform: Platform) => {
+    switch (platform) {
+      case 'wechat':
+        return 'https://mp.weixin.qq.com/cgi-bin/appmsg?t=media/appmsg_edit_v2&action=edit&isNew=1&type=10&token=&lang=zh_CN';
+      case 'zhihu':
+        return 'https://zhuanlan.zhihu.com/write';
+      case 'juejin':
+        return 'https://juejin.cn/editor/drafts/new?v=2';
+      case 'xiaohongshu':
+        return 'https://creator.xiaohongshu.com/publish/publish';
+      default:
+        return '';
+    }
+  };
+
+  // 处理发布
+  const handlePublish = useCallback(async () => {
+    if (!title.trim() || !content.trim()) {
+      alert('请先输入标题和内容');
+      return;
+    }
+
+    setIsPublishing(true);
+
+    try {
+      const contentToPublish = finalContent || content;
+      const platformUrl = getPlatformUrl(selectedPlatform);
+
+      if (selectedPlatform === 'wechat') {
+        // 微信公众号：尝试调用Chrome插件的一键发布功能
+        if (typeof window !== 'undefined' && (window as any).chrome?.runtime) {
+          try {
+            // 发送消息给Chrome插件
+            (window as any).chrome.runtime.sendMessage({
+              action: 'oneClickPublish',
+              platform: 'wechat',
+              title: title,
+              content: contentToPublish,
+              preset: appliedSettings
+            }, (response: any) => {
+              if (response?.success) {
+                alert('正在跳转到微信公众号编辑器...');
+              } else {
+                // 如果插件调用失败，直接打开页面
+                window.open(platformUrl, '_blank');
+                alert('已打开微信公众号编辑器，请手动粘贴内容');
+              }
+            });
+          } catch (error) {
+            // 如果没有Chrome插件，直接打开页面
+            window.open(platformUrl, '_blank');
+            alert('已打开微信公众号编辑器，请手动粘贴内容');
+          }
+        } else {
+          // 非Chrome环境，直接打开页面
+          window.open(platformUrl, '_blank');
+          alert('已打开微信公众号编辑器，请手动粘贴内容');
+        }
+      } else {
+        // 其他平台：复制内容到剪贴板并打开编辑器
+        let contentToCopy = '';
+
+        // 添加标题
+        if (title) {
+          contentToCopy += `# ${title}\n\n`;
+        }
+
+        // 添加内容（优先使用Markdown格式）
+        contentToCopy += contentToPublish;
+
+        // 添加发布预设的开头和结尾内容
+        if (appliedSettings) {
+          if (appliedSettings.headerContent) {
+            contentToCopy = appliedSettings.headerContent + '\n\n' + contentToCopy;
+          }
+          if (appliedSettings.footerContent) {
+            contentToCopy += '\n\n' + appliedSettings.footerContent;
+          }
+        }
+
+        // 复制到剪贴板
+        try {
+          await navigator.clipboard.writeText(contentToCopy);
+          window.open(platformUrl, '_blank');
+
+          const platformName = platforms.find(p => p.id === selectedPlatform)?.name || selectedPlatform;
+          alert(`内容已复制到剪贴板！\n正在打开${platformName}编辑器，请手动粘贴内容。`);
+        } catch (error) {
+          console.error('复制失败:', error);
+          window.open(platformUrl, '_blank');
+          alert(`已打开${platforms.find(p => p.id === selectedPlatform)?.name || selectedPlatform}编辑器，请手动复制粘贴内容`);
+        }
+      }
+    } catch (error) {
+      console.error('发布失败:', error);
+      alert('发布失败，请重试');
+    } finally {
+      setIsPublishing(false);
+    }
+  }, [selectedPlatform, title, content, finalContent, appliedSettings, platforms]);
   return (
     <div className="flex flex-col h-full">
       {/* 预览控制栏 */}
@@ -193,38 +296,60 @@ export function PlatformPreview({ title, content }: PlatformPreviewProps) {
             </select>
           </div>
 
-          {/* 发布设置 */}
-          <PublishSettings
-            platform={selectedPlatform}
-            onApplySettings={(settings) => {
-              console.log('应用发布设置:', settings);
-              setAppliedSettings(settings);
-              // 立即重新预览
-              setTimeout(() => {
-                handlePreview(selectedPlatform, selectedStyle);
-              }, 100);
-            }}
-          />
+          <div className="flex items-center space-x-3">
+            {/* 发布设置 */}
+            <PublishSettings
+              platform={selectedPlatform}
+              onApplySettings={(settings) => {
+                console.log('应用发布设置:', settings);
+                setAppliedSettings(settings);
+                // 立即重新预览
+                setTimeout(() => {
+                  handlePreview(selectedPlatform, selectedStyle);
+                }, 100);
+              }}
+            />
 
-          {/* 显示当前应用的设置 */}
-          {appliedSettings && (
-            <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-md">
-              <div className="text-xs text-green-700">
-                ✅ 已应用设置: {appliedSettings.name} ({appliedSettings.platform === 'wechat' ? '微信公众号' : appliedSettings.platform})
-              </div>
-              {appliedSettings.headerContent && (
-                <div className="text-xs text-gray-600 mt-1">
-                  📝 包含开头内容
-                </div>
+            {/* 去发布按钮 */}
+            <button
+              onClick={handlePublish}
+              disabled={isPublishing || !title.trim() || !content.trim()}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                isPublishing || !title.trim() || !content.trim()
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow-md'
+              }`}
+              title={`发布到${platforms.find(p => p.id === selectedPlatform)?.name}`}
+            >
+              {isPublishing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
               )}
-              {appliedSettings.footerContent && (
-                <div className="text-xs text-gray-600 mt-1">
-                  📝 包含结尾内容
-                </div>
-              )}
-            </div>
-          )}
+              <span>{isPublishing ? '发布中...' : '去发布'}</span>
+              <ExternalLink className="h-3 w-3" />
+            </button>
+          </div>
         </div>
+
+        {/* 显示当前应用的设置 */}
+        {appliedSettings && (
+          <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-md">
+            <div className="text-xs text-green-700 font-medium">
+              ✅ 已应用设置: {appliedSettings.name} ({appliedSettings.platform === 'wechat' ? '微信公众号' : appliedSettings.platform})
+            </div>
+            {appliedSettings.headerContent && (
+              <div className="text-xs text-gray-600 mt-1">
+                📝 包含开头内容
+              </div>
+            )}
+            {appliedSettings.footerContent && (
+              <div className="text-xs text-gray-600 mt-1">
+                📝 包含结尾内容
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* 预览内容 */}

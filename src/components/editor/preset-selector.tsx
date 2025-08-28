@@ -155,8 +155,8 @@ export function PresetSelector({ platform, onApplyPreset }: PresetSelectorProps)
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    // TODO: 打开创建预设对话框
-                    alert('创建预设功能开发中...');
+                    // 跳转到预设管理页面
+                    window.open('/dashboard/presets', '_blank');
                   }}
                 >
                   <Plus className="h-4 w-4 mr-1" />
@@ -193,8 +193,8 @@ export function PresetSelector({ platform, onApplyPreset }: PresetSelectorProps)
                             className="h-6 w-6 p-0"
                             onClick={(e) => {
                               e.stopPropagation();
-                              // TODO: 编辑预设
-                              alert('编辑预设功能开发中...');
+                              // 跳转到预设编辑页面
+                              window.open(`/dashboard/presets?edit=${preset.id}`, '_blank');
                             }}
                           >
                             <Edit className="h-3 w-3" />
@@ -203,11 +203,23 @@ export function PresetSelector({ platform, onApplyPreset }: PresetSelectorProps)
                             variant="ghost"
                             size="sm"
                             className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
-                            onClick={(e) => {
+                            onClick={async (e) => {
                               e.stopPropagation();
-                              // TODO: 删除预设
                               if (confirm('确定要删除这个预设吗？')) {
-                                alert('删除预设功能开发中...');
+                                try {
+                                  const response = await fetch(`/api/presets/${preset.id}`, {
+                                    method: 'DELETE',
+                                  });
+                                  if (response.ok) {
+                                    // 重新加载预设列表
+                                    loadPresets();
+                                  } else {
+                                    alert('删除失败，请重试');
+                                  }
+                                } catch (error) {
+                                  console.error('删除预设失败:', error);
+                                  alert('删除失败，请重试');
+                                }
                               }
                             }}
                           >
@@ -239,8 +251,8 @@ export function PresetSelector({ platform, onApplyPreset }: PresetSelectorProps)
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      // TODO: 创建新预设
-                      alert('创建预设功能开发中...');
+                      // 跳转到预设管理页面
+                      window.open('/dashboard/presets', '_blank');
                     }}
                   >
                     <Plus className="h-4 w-4 mr-1" />

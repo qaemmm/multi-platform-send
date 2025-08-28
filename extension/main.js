@@ -164,8 +164,8 @@
         'zhihu': {
           showFillButton: false,
           showCopyButton: true,
-          fillButtonText: '填充',
-          copyButtonText: '复制'
+          fillButtonText: '填充标题',
+          copyButtonText: '复制Markdown'
         },
         'default': {
           showFillButton: true,
@@ -210,6 +210,8 @@
       switch (platform) {
         case 'zhihu':
           return this.generateZhihuCopyContent(article, articleData);
+        case 'juejin':
+          return this.generateJuejinCopyContent(article, articleData);
         case 'wechat':
         default:
           // 公众号和其他平台只复制原始内容
@@ -224,7 +226,16 @@
         preset.platform === 'zhihu' && preset.isDefault
       ) || this.state.presets.find(preset => preset.platform === 'zhihu');
 
+      console.log('🔍 知乎平台复制，所有预设:', this.state.presets);
       console.log('🔍 知乎平台复制，查找知乎预设:', zhihuPreset);
+      console.log('🔍 知乎平台复制，预设详情:', zhihuPreset ? {
+        id: zhihuPreset.id,
+        name: zhihuPreset.name,
+        platform: zhihuPreset.platform,
+        isDefault: zhihuPreset.isDefault,
+        headerContent: zhihuPreset.headerContent,
+        footerContent: zhihuPreset.footerContent
+      } : '未找到知乎预设');
 
       let content = '';
 
@@ -249,6 +260,47 @@
       return content;
     },
 
+    // 生成掘金平台的复制内容（和知乎平台保持一致）
+    generateJuejinCopyContent(article, articleData) {
+      // 查找掘金平台的默认预设
+      const juejinPreset = this.state.presets.find(preset =>
+        preset.platform === 'juejin' && preset.isDefault
+      ) || this.state.presets.find(preset => preset.platform === 'juejin');
+
+      console.log('🔍 掘金平台复制，所有预设:', this.state.presets);
+      console.log('🔍 掘金平台复制，查找掘金预设:', juejinPreset);
+      console.log('🔍 掘金平台复制，预设详情:', juejinPreset ? {
+        id: juejinPreset.id,
+        name: juejinPreset.name,
+        platform: juejinPreset.platform,
+        isDefault: juejinPreset.isDefault,
+        headerContent: juejinPreset.headerContent,
+        footerContent: juejinPreset.footerContent
+      } : '未找到掘金预设');
+
+      let content = '';
+
+      // 添加标题
+      if (article.title) {
+        content += `# ${article.title}\n\n`;
+      }
+
+      // 添加开头内容
+      if (juejinPreset?.headerContent) {
+        content += juejinPreset.headerContent + '\n\n';
+      }
+
+      // 添加文章内容
+      content += articleData.content || '暂无内容';
+
+      // 添加结尾内容
+      if (juejinPreset?.footerContent) {
+        content += '\n\n' + juejinPreset.footerContent;
+      }
+
+      return content;
+    },
+
     // 获取复制成功消息
     getCopySuccessMessage(platform) {
       switch (platform) {
@@ -256,6 +308,11 @@
           const hasZhihuPreset = this.state.presets.some(preset => preset.platform === 'zhihu');
           return hasZhihuPreset
             ? 'Markdown内容（含知乎预设）已复制到剪贴板！'
+            : 'Markdown内容已复制到剪贴板！';
+        case 'juejin':
+          const hasJuejinPreset = this.state.presets.some(preset => preset.platform === 'juejin');
+          return hasJuejinPreset
+            ? 'Markdown内容（含掘金预设）已复制到剪贴板！'
             : 'Markdown内容已复制到剪贴板！';
         case 'wechat':
         default:
@@ -757,15 +814,15 @@
       // 检测当前平台
       const platformInfo = ZiliuEditor.detectPlatformAndElements();
 
-      // 如果是知乎平台，只填充标题
-      if (platformInfo.platform === 'zhihu') {
+      // 如果是知乎或掘金平台，只填充标题
+      if (platformInfo.platform === 'zhihu' || platformInfo.platform === 'juejin') {
         try {
-          console.log('🔍 知乎平台：点击列表项，只填充标题');
+          console.log(`🔍 ${platformInfo.platform}平台：点击列表项，只填充标题`);
 
           // 获取文章详情
           const articleDetail = await ZiliuAPI.fetchArticleDetail(articleId);
 
-          // 查找知乎编辑器元素
+          // 查找编辑器元素
           const elements = platformInfo.platformInstance.findEditorElements();
 
           if (elements.isEditor && elements.titleInput && articleDetail.title) {
@@ -780,14 +837,14 @@
             const changeEvent = new Event('change', { bubbles: true });
             elements.titleInput.dispatchEvent(changeEvent);
 
-            console.log('✅ 知乎标题填充完成:', articleDetail.title);
+            console.log(`✅ ${platformInfo.platform}标题填充完成:`, articleDetail.title);
             ZiliuUtils.showNotification('标题已填充，请使用复制按钮获取内容', 'success');
           } else {
-            console.warn('⚠️ 知乎编辑器未找到或标题为空');
-            ZiliuUtils.showNotification('知乎编辑器未找到，请确保在编辑页面', 'warning');
+            console.warn(`⚠️ ${platformInfo.platform}编辑器未找到或标题为空`);
+            ZiliuUtils.showNotification(`${platformInfo.platform}编辑器未找到，请确保在编辑页面`, 'warning');
           }
         } catch (error) {
-          console.error('❌ 知乎标题填充失败:', error);
+          console.error(`❌ ${platformInfo.platform}标题填充失败:`, error);
           ZiliuUtils.showNotification('标题填充失败: ' + error.message, 'error');
         }
         return;
@@ -842,11 +899,30 @@
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
       console.log('📄 页面加载完成，开始初始化字流助手');
-      ZiliuController.init();
+      initializeWithDelay();
     });
   } else {
     console.log('📄 页面已加载，开始初始化字流助手');
+    initializeWithDelay();
+  }
+
+  // 带延迟的初始化函数，特别为掘金等动态加载的编辑器
+  function initializeWithDelay() {
     ZiliuController.init();
+
+    // 如果是掘金平台，则延迟重试检测（因为掘金编辑器是动态加载的）
+    if (window.location.href.includes('juejin.cn/editor')) {
+      setTimeout(() => {
+        // 重新检测掘金编辑器
+        const platformInfo = ZiliuEditor.detectPlatformAndElements();
+        if (!platformInfo.isEditor) {
+          console.log('🔄 掘金平台延迟重试检测...');
+          ZiliuController.init();
+        } else {
+          console.log('✅ 掘金平台延迟检测成功');
+        }
+      }, 2000); // 2秒后重试
+    }
   }
 
   console.log('✅ 字流主控制器模块已加载');

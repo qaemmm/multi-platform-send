@@ -257,9 +257,7 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
                       {/* 显示设置摘要 */}
                       <div className="text-xs text-gray-500 mt-1">
                         {platform === 'wechat' && setting.authorName && `作者: ${setting.authorName}`}
-                        {platform === 'zhihu' && setting.columnName && `专栏: ${setting.columnName}`}
-                        {platform === 'juejin' && setting.category && `分类: ${setting.category}`}
-                        {platform === 'xiaohongshu' && setting.topic && `话题: ${setting.topic}`}
+                        {(platform === 'zhihu' || platform === 'juejin') && '支持开头和结尾内容设置'}
                       </div>
                     </div>
                   ))}
@@ -405,8 +403,8 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
                 </>
               )}
 
-              {/* 知乎平台特定字段 */}
-              {platform === 'zhihu' && (
+              {/* 知乎和掘金平台特定字段 */}
+              {(platform === 'zhihu' || platform === 'juejin') && (
                 <>
                   <div>
                     <div className="flex items-center justify-between mb-1">

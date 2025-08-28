@@ -29,6 +29,14 @@ class PlatformManager {
       console.warn('知乎平台初始化失败:', error.message);
     }
 
+    try {
+      if (typeof JuejinPlatform !== 'undefined') {
+        this.registerPlatform(new JuejinPlatform());
+      }
+    } catch (error) {
+      console.warn('掘金平台初始化失败:', error.message);
+    }
+
     // 可以在这里添加更多平台
     // try {
     //   if (typeof JianshuPlatform !== 'undefined') {

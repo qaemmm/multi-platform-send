@@ -21,9 +21,7 @@ export function PlatformConfigForm({ platform, config, onChange }: PlatformConfi
         </div>
       </div>
 
-      <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-md">
-        💡 平台特定配置功能正在开发中，目前所有平台都支持开头和结尾内容设置。
-      </div>
+
 
       {/* 未来在这里添加平台特定的字段 */}
     </div>
