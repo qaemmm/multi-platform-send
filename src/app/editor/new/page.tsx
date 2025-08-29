@@ -33,8 +33,9 @@ export default function NewEditorPage() {
 
       const data = await response.json();
       if (data.success) {
-        // 保存成功，可以显示提示或跳转
+        // 保存成功，跳转到编辑页面
         console.log('文章保存成功:', data.data);
+        router.push(`/editor/${data.data.id}`);
       } else {
         throw new Error(data.error || '保存失败');
       }
