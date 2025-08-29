@@ -98,6 +98,45 @@
       }
     },
 
+    // 获取平台配置
+    getPlatformConfig() {
+      const platformConfigs = {
+        'zhihu': {
+          color: '#0084ff',
+          name: '知乎'
+        },
+        'juejin': {
+          color: '#1E80FF', 
+          name: '掘金'
+        },
+        'wechat': {
+          color: '#07c160',
+          name: '微信公众号'
+        },
+        'zsxq': {
+          color: '#07c160',
+          name: '知识星球'
+        },
+        'default': {
+          color: '#667eea',
+          name: '字流'
+        }
+      };
+
+      // 检测当前平台
+      if (window.location.href.includes('zhuanlan.zhihu.com')) {
+        return platformConfigs.zhihu;
+      } else if (window.location.href.includes('juejin.cn')) {
+        return platformConfigs.juejin;
+      } else if (window.location.href.includes('mp.weixin.qq.com')) {
+        return platformConfigs.wechat;
+      } else if (window.location.href.includes('zsxq.com')) {
+        return platformConfigs.zsxq;
+      }
+      
+      return platformConfigs.default;
+    },
+
     // 创建悬浮按钮（备用方案）
     createFloatingButton() {
       // 检查是否已经存在悬浮按钮
@@ -108,10 +147,10 @@
       const floatingBtn = document.createElement('div');
       floatingBtn.id = 'ziliu-floating-btn';
 
-      // 根据平台调整图标和样式
-      const isZhihu = window.location.href.includes('zhuanlan.zhihu.com');
-      const bgColor = isZhihu ? '#0084ff' : '#07c160'; // 知乎蓝色 vs 微信绿色
-      const iconText = isZhihu ? '字' : '流'; // 知乎显示"字"，微信显示"流"
+      // 获取平台配置
+      const platformConfig = this.getPlatformConfig();
+      const { color: bgColor, name: platformName } = platformConfig;
+      const iconText = '字流'; // 统一使用"字流"
 
       floatingBtn.innerHTML = `
         <div style="
@@ -161,7 +200,7 @@
       });
 
       document.body.appendChild(floatingBtn);
-      console.log(`✅ 已创建${isZhihu ? '知乎' : '微信'}平台悬浮按钮`);
+      console.log(`✅ 已创建${platformName}平台悬浮按钮`);
     },
 
     // 创建右侧面板
