@@ -30,7 +30,7 @@ export const publishRecords = sqliteTable('publish_records', {
   id: text('id').primaryKey().$defaultFn(() => createId()),
   articleId: text('article_id').notNull().references(() => articles.id, { onDelete: 'cascade' }),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  platform: text('platform', { enum: ['wechat', 'zhihu', 'juejin', 'xiaohongshu'] }).notNull(),
+  platform: text('platform', { enum: ['wechat', 'zhihu', 'juejin', 'xiaohongshu', 'zsxq'] }).notNull(),
   status: text('status', { enum: ['pending', 'success', 'failed'] }).notNull().default('pending'),
   platformArticleId: text('platform_article_id'), // 平台返回的文章ID
   platformUrl: text('platform_url'), // 发布后的URL

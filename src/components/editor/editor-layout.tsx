@@ -17,7 +17,7 @@ import Link from 'next/link';
 import { countWords, calculateReadingTime } from '@/lib/utils';
 import { FeishuImportDialog } from './feishu-import-dialog';
 
-export type Platform = 'wechat' | 'zhihu' | 'juejin' | 'xiaohongshu';
+export type Platform = 'wechat' | 'zhihu' | 'juejin' | 'xiaohongshu' | 'zsxq';
 
 interface EditorLayoutProps {
   initialTitle?: string;

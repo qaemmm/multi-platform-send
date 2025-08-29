@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Platform } from './multi-platform-editor';
+import { Platform } from '@/types/platform-settings';
 import { Smartphone, Monitor, Palette, Loader2, ExternalLink, Send } from 'lucide-react';
 import { PublishSettings } from './publish-settings';
 
@@ -48,6 +48,13 @@ export function PlatformPreview({ title, content }: PlatformPreviewProps) {
       icon: '📝',
       color: 'bg-red-500',
       description: '小红书笔记'
+    },
+    {
+      id: 'zsxq' as Platform,
+      name: '知识星球',
+      icon: '🌟',
+      color: 'bg-yellow-500',
+      description: '知识星球文章和主题'
     }
   ];
 
@@ -144,6 +151,11 @@ export function PlatformPreview({ title, content }: PlatformPreviewProps) {
         return 'https://juejin.cn/editor/drafts/new?v=2';
       case 'xiaohongshu':
         return 'https://creator.xiaohongshu.com/publish/publish';
+      case 'zsxq':
+        // 知识星球的文章编辑页面，如果有配置的groupId则使用第一个
+        const groupIds = appliedSettings?.platformConfig?.groupIds;
+        const groupId = groupIds && groupIds.length > 0 ? groupIds[0] : '28882842528281';
+        return `https://wx.zsxq.com/article?groupId=${groupId}`;
       default:
         return '';
     }
@@ -152,7 +164,6 @@ export function PlatformPreview({ title, content }: PlatformPreviewProps) {
   // 处理发布
   const handlePublish = useCallback(async () => {
     if (!title.trim() || !content.trim()) {
-      alert('请先输入标题和内容');
       return;
     }
 
@@ -162,7 +173,34 @@ export function PlatformPreview({ title, content }: PlatformPreviewProps) {
       const contentToPublish = finalContent || content;
       const platformUrl = getPlatformUrl(selectedPlatform);
 
-      if (selectedPlatform === 'wechat') {
+      if (selectedPlatform === 'zsxq') {
+        // 知识星球：尝试调用Chrome插件的一键发布功能
+        if (typeof window !== 'undefined' && (window as any).chrome?.runtime) {
+          try {
+            // 发送消息给Chrome插件
+            (window as any).chrome.runtime.sendMessage({
+              action: 'oneClickPublish',
+              platform: 'zsxq',
+              title: title,
+              content: contentToPublish,
+              preset: appliedSettings
+            }, (response: any) => {
+              if (response?.success) {
+                // 插件调用成功，直接跳转
+              } else {
+                // 如果插件调用失败，直接打开页面
+                window.open(platformUrl, '_blank');
+              }
+            });
+          } catch (error) {
+            // 如果没有Chrome插件，直接打开页面
+            window.open(platformUrl, '_blank');
+          }
+        } else {
+          // 非Chrome环境，直接打开页面
+          window.open(platformUrl, '_blank');
+        }
+      } else if (selectedPlatform === 'wechat') {
         // 微信公众号：尝试调用Chrome插件的一键发布功能
         if (typeof window !== 'undefined' && (window as any).chrome?.runtime) {
           try {
@@ -175,22 +213,19 @@ export function PlatformPreview({ title, content }: PlatformPreviewProps) {
               preset: appliedSettings
             }, (response: any) => {
               if (response?.success) {
-                alert('正在跳转到微信公众号编辑器...');
+                // 插件调用成功，直接跳转
               } else {
                 // 如果插件调用失败，直接打开页面
                 window.open(platformUrl, '_blank');
-                alert('已打开微信公众号编辑器，请手动粘贴内容');
               }
             });
           } catch (error) {
             // 如果没有Chrome插件，直接打开页面
             window.open(platformUrl, '_blank');
-            alert('已打开微信公众号编辑器，请手动粘贴内容');
           }
         } else {
           // 非Chrome环境，直接打开页面
           window.open(platformUrl, '_blank');
-          alert('已打开微信公众号编辑器，请手动粘贴内容');
         }
       } else {
         // 其他平台：复制内容到剪贴板并打开编辑器
@@ -218,18 +253,13 @@ export function PlatformPreview({ title, content }: PlatformPreviewProps) {
         try {
           await navigator.clipboard.writeText(contentToCopy);
           window.open(platformUrl, '_blank');
-
-          const platformName = platforms.find(p => p.id === selectedPlatform)?.name || selectedPlatform;
-          alert(`内容已复制到剪贴板！\n正在打开${platformName}编辑器，请手动粘贴内容。`);
         } catch (error) {
           console.error('复制失败:', error);
           window.open(platformUrl, '_blank');
-          alert(`已打开${platforms.find(p => p.id === selectedPlatform)?.name || selectedPlatform}编辑器，请手动复制粘贴内容`);
         }
       }
     } catch (error) {
       console.error('发布失败:', error);
-      alert('发布失败，请重试');
     } finally {
       setIsPublishing(false);
     }
@@ -376,6 +406,7 @@ export function PlatformPreview({ title, content }: PlatformPreviewProps) {
             {selectedPlatform === 'zhihu' && <ZhihuPreview title={title} content={previewHtml} />}
             {selectedPlatform === 'juejin' && <JuejinPreview title={title} content={previewHtml} />}
             {selectedPlatform === 'xiaohongshu' && <XiaohongshuPreview title={title} content={previewHtml} />}
+            {selectedPlatform === 'zsxq' && <ZsxqPreview title={title} content={previewHtml} />}
           </>
         )}
       </div>
@@ -681,6 +712,59 @@ function XiaohongshuPreview({ title, content }: { title: string; content: string
         {/* 手机标签 */}
         <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xs text-gray-500 font-medium">
           小红书预览
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// 知识星球预览
+function ZsxqPreview({ title, content }: { title: string; content: string }) {
+  return (
+    <div className="p-6 bg-gray-50 min-h-full">
+      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-sm border border-gray-200">
+        {/* 知识星球头部 */}
+        <div className="p-6 border-b border-gray-100">
+          <div className="flex items-center space-x-3 mb-4">
+            <div className="w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center text-white font-bold">
+              星
+            </div>
+            <div>
+              <div className="font-medium text-gray-900">字流</div>
+              <div className="text-sm text-gray-500">刚刚发布</div>
+            </div>
+          </div>
+          {title && <h1 className="text-2xl font-bold text-gray-900 mb-2">{title}</h1>}
+        </div>
+
+        {/* 文章内容 */}
+        <div className="p-6">
+          <div
+            className="zsxq-content prose prose-lg max-w-none"
+            dangerouslySetInnerHTML={{ __html: content }}
+          />
+        </div>
+
+        {/* 底部操作栏 */}
+        <div className="px-6 py-4 border-t border-gray-100 flex items-center space-x-6">
+          <button className="flex items-center space-x-2 text-gray-500 hover:text-yellow-600">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V9a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2.61l.69.83L10 18h4m-7-10v2m0-2V9a2 2 0 012-2h2a2 2 0 012 2v1" />
+            </svg>
+            <span>点赞</span>
+          </button>
+          <button className="flex items-center space-x-2 text-gray-500 hover:text-yellow-600">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+            <span>评论</span>
+          </button>
+          <button className="flex items-center space-x-2 text-gray-500 hover:text-yellow-600">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+            </svg>
+            <span>分享</span>
+          </button>
         </div>
       </div>
     </div>

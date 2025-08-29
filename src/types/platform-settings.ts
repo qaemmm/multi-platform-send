@@ -1,6 +1,6 @@
 // 平台特定的发布设置类型定义
 
-export type Platform = 'wechat' | 'zhihu' | 'juejin' | 'xiaohongshu';
+export type Platform = 'wechat' | 'zhihu' | 'juejin' | 'xiaohongshu' | 'zsxq';
 
 // 基础发布设置
 export interface BasePlatformSettings {
@@ -40,6 +40,11 @@ export interface JuejinSettings extends BasePlatformSettings {
 
 export interface XiaohongshuSettings extends BasePlatformSettings {
   platform: 'xiaohongshu';
+}
+
+export interface ZsxqSettings extends BasePlatformSettings {
+  platform: 'zsxq';
+  groupIds?: string[]; // 知识星球ID列表，支持多个星球
 }
 
 // 平台信息
@@ -85,6 +90,14 @@ export const PLATFORM_CONFIGS: Record<Platform, PlatformInfo> = {
     color: 'bg-red-500',
     description: '小红书笔记发布',
     supportedFeatures: ['话题设置', '位置标记', '多图封面', '商业标记']
+  },
+  zsxq: {
+    id: 'zsxq',
+    name: '知识星球',
+    icon: '🌟',
+    color: 'bg-yellow-500',
+    description: '知识星球文章和主题发布',
+    supportedFeatures: ['多星球发布', '富文本编辑', 'Markdown支持', '文章模式', '主题模式']
   }
 };
 

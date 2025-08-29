@@ -37,6 +37,14 @@ class PlatformManager {
       console.warn('掘金平台初始化失败:', error.message);
     }
 
+    try {
+      if (typeof ZsxqPlatform !== 'undefined') {
+        this.registerPlatform(new ZsxqPlatform());
+      }
+    } catch (error) {
+      console.warn('知识星球平台初始化失败:', error.message);
+    }
+
     // 可以在这里添加更多平台
     // try {
     //   if (typeof JianshuPlatform !== 'undefined') {

@@ -35,6 +35,7 @@
         "platforms/wechat-platform.js",
         "platforms/zhihu-platform.js",
         "platforms/juejin-platform.js",
+        "platforms/zsxq-platform.js",
         "platforms/platform-manager.js",
         "constants.js",
         "utils.js",
@@ -55,6 +56,7 @@
         "platforms/wechat-platform.js",
         "platforms/zhihu-platform.js",
         "platforms/juejin-platform.js",
+        "platforms/zsxq-platform.js",
         "platforms/platform-manager.js",
         "constants.js",
         "utils.js",
@@ -75,6 +77,29 @@
         "platforms/wechat-platform.js",
         "platforms/zhihu-platform.js",
         "platforms/juejin-platform.js",
+        "platforms/zsxq-platform.js",
+        "platforms/platform-manager.js",
+        "constants.js",
+        "utils.js",
+        "api.js",
+        "editor.js",
+        "ui.js",
+        "main.js"
+      ],
+      "run_at": "document_end",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://wx.zsxq.com/group/*",
+        "https://wx.zsxq.com/article?groupId=*"
+      ],
+      "js": [
+        "platforms/base-platform.js",
+        "platforms/wechat-platform.js",
+        "platforms/zhihu-platform.js",
+        "platforms/juejin-platform.js",
+        "platforms/zsxq-platform.js",
         "platforms/platform-manager.js",
         "constants.js",
         "utils.js",

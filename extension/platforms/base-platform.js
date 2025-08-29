@@ -17,8 +17,36 @@ class BasePlatform {
    */
   isEditorPage(url) {
     return this.urlPatterns.some(pattern => {
-      const regex = new RegExp(pattern.replace(/\*/g, '.*'));
-      return regex.test(url);
+      try {
+        // 将通配符模式转换为正则表达式
+        // 先转义特殊字符，保留 * 不转义
+        let escapedPattern = pattern.replace(/[.+^${}()|[\]\\?]/g, '\\$&');
+        
+        // 将 * 替换为 .* （通配符匹配任意字符）
+        escapedPattern = escapedPattern.replace(/\*/g, '.*');
+        
+        const regex = new RegExp('^' + escapedPattern + '$', 'i');
+        const matches = regex.test(url);
+        
+        // 调试日志
+        if (this.name === 'zsxq' || this.name === 'wechat') {
+          console.log(`🔍 ${this.displayName}URL匹配调试:`, {
+            url,
+            pattern,
+            escapedPattern,
+            regex: regex.toString(),
+            matches
+          });
+        }
+        
+        return matches;
+      } catch (error) {
+        console.error(`❌ ${this.displayName}URL匹配失败:`, {
+          pattern,
+          error: error.message
+        });
+        return false;
+      }
     });
   }
 

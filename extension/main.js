@@ -167,6 +167,12 @@
           fillButtonText: '填充标题',
           copyButtonText: '复制Markdown'
         },
+        'juejin': {
+          showFillButton: false,
+          showCopyButton: true,
+          fillButtonText: '填充',
+          copyButtonText: '复制Markdown'
+        },
         'default': {
           showFillButton: true,
           showCopyButton: true,
