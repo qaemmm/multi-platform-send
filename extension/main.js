@@ -221,13 +221,23 @@
 
     // 生成知乎平台的复制内容
     generateZhihuCopyContent(article, articleData) {
-      // 查找知乎平台的默认预设
-      const zhihuPreset = this.state.presets.find(preset =>
+      // 查找知乎平台的预设，增加容错处理
+      let zhihuPreset = null;
+
+      // 首先查找明确标记为知乎平台的预设
+      zhihuPreset = this.state.presets.find(preset =>
         preset.platform === 'zhihu' && preset.isDefault
       ) || this.state.presets.find(preset => preset.platform === 'zhihu');
 
+      // 如果没有找到知乎预设，尝试查找默认预设或任意预设
+      if (!zhihuPreset) {
+        console.log('🔍 未找到知乎专用预设，尝试使用默认预设');
+        zhihuPreset = this.state.presets.find(preset => preset.isDefault) ||
+                      this.state.presets[0] || null;
+      }
+
       console.log('🔍 知乎平台复制，所有预设:', this.state.presets);
-      console.log('🔍 知乎平台复制，查找知乎预设:', zhihuPreset);
+      console.log('🔍 知乎平台复制，最终选择的预设:', zhihuPreset);
       console.log('🔍 知乎平台复制，预设详情:', zhihuPreset ? {
         id: zhihuPreset.id,
         name: zhihuPreset.name,
@@ -235,7 +245,7 @@
         isDefault: zhihuPreset.isDefault,
         headerContent: zhihuPreset.headerContent,
         footerContent: zhihuPreset.footerContent
-      } : '未找到知乎预设');
+      } : '未找到任何可用预设');
 
       let content = '';
 
@@ -246,7 +256,10 @@
 
       // 添加开头内容
       if (zhihuPreset?.headerContent) {
+        console.log('🔍 添加预设开头内容:', zhihuPreset.headerContent.substring(0, 50) + '...');
         content += zhihuPreset.headerContent + '\n\n';
+      } else {
+        console.log('🔍 没有预设开头内容');
       }
 
       // 添加文章内容
@@ -254,21 +267,35 @@
 
       // 添加结尾内容
       if (zhihuPreset?.footerContent) {
+        console.log('🔍 添加预设结尾内容:', zhihuPreset.footerContent.substring(0, 50) + '...');
         content += '\n\n' + zhihuPreset.footerContent;
+      } else {
+        console.log('🔍 没有预设结尾内容');
       }
 
+      console.log('🔍 最终复制内容长度:', content.length);
       return content;
     },
 
     // 生成掘金平台的复制内容（和知乎平台保持一致）
     generateJuejinCopyContent(article, articleData) {
-      // 查找掘金平台的默认预设
-      const juejinPreset = this.state.presets.find(preset =>
+      // 查找掘金平台的预设，增加容错处理
+      let juejinPreset = null;
+
+      // 首先查找明确标记为掘金平台的预设
+      juejinPreset = this.state.presets.find(preset =>
         preset.platform === 'juejin' && preset.isDefault
       ) || this.state.presets.find(preset => preset.platform === 'juejin');
 
+      // 如果没有找到掘金预设，尝试查找默认预设或任意预设
+      if (!juejinPreset) {
+        console.log('🔍 未找到掘金专用预设，尝试使用默认预设');
+        juejinPreset = this.state.presets.find(preset => preset.isDefault) ||
+                       this.state.presets[0] || null;
+      }
+
       console.log('🔍 掘金平台复制，所有预设:', this.state.presets);
-      console.log('🔍 掘金平台复制，查找掘金预设:', juejinPreset);
+      console.log('🔍 掘金平台复制，最终选择的预设:', juejinPreset);
       console.log('🔍 掘金平台复制，预设详情:', juejinPreset ? {
         id: juejinPreset.id,
         name: juejinPreset.name,
@@ -276,7 +303,7 @@
         isDefault: juejinPreset.isDefault,
         headerContent: juejinPreset.headerContent,
         footerContent: juejinPreset.footerContent
-      } : '未找到掘金预设');
+      } : '未找到任何可用预设');
 
       let content = '';
 
@@ -287,7 +314,10 @@
 
       // 添加开头内容
       if (juejinPreset?.headerContent) {
+        console.log('🔍 添加预设开头内容:', juejinPreset.headerContent.substring(0, 50) + '...');
         content += juejinPreset.headerContent + '\n\n';
+      } else {
+        console.log('🔍 没有预设开头内容');
       }
 
       // 添加文章内容
@@ -295,9 +325,13 @@
 
       // 添加结尾内容
       if (juejinPreset?.footerContent) {
+        console.log('🔍 添加预设结尾内容:', juejinPreset.footerContent.substring(0, 50) + '...');
         content += '\n\n' + juejinPreset.footerContent;
+      } else {
+        console.log('🔍 没有预设结尾内容');
       }
 
+      console.log('🔍 最终复制内容长度:', content.length);
       return content;
     },
 

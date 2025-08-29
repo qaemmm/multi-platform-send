@@ -6,7 +6,10 @@ class ZhihuPlatform extends BasePlatform {
     super({
       name: 'zhihu',
       displayName: '知乎',
-      urlPatterns: ['*://zhuanlan.zhihu.com/write*'],
+      urlPatterns: [
+        '*://zhuanlan.zhihu.com/write*',
+        '*://zhuanlan.zhihu.com/p/*/edit*'
+      ],
       editorUrl: 'https://zhuanlan.zhihu.com/write'
     });
     
