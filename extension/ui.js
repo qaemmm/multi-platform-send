@@ -833,7 +833,7 @@
           gap: 6px;
         }
 
-        .ziliu-fill-btn, .ziliu-copy-markdown-btn, .ziliu-edit-btn {
+        .ziliu-fill-btn, .ziliu-copy-markdown-btn, .ziliu-edit-btn, .ziliu-one-click-publish-btn {
           height: 32px;
           border: 1px solid #e1e8ed;
           border-radius: 8px;
@@ -844,6 +844,7 @@
           transition: all 0.2s ease;
           font-size: 12px;
           font-weight: 500;
+          gap: 4px;
         }
 
         .ziliu-fill-btn {
@@ -903,6 +904,27 @@
           border-color: #667eea;
           color: white;
           transform: scale(1.05);
+        }
+
+        .ziliu-one-click-publish-btn {
+          background: #fff1f0;
+          color: #ff4d4f;
+          border-color: #ffb3b3;
+          padding: 0 12px;
+          min-width: 88px;
+        }
+
+        .ziliu-one-click-publish-btn:hover:not(:disabled) {
+          background: #ff4d4f;
+          border-color: #ff4d4f;
+          color: white;
+          transform: scale(1.05);
+        }
+
+        .ziliu-one-click-publish-btn:disabled {
+          opacity: 0.7;
+          cursor: not-allowed;
+          transform: none;
         }
 
         /* 加载动画 */

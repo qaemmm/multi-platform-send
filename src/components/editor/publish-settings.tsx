@@ -260,7 +260,7 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
                       <div className="text-xs text-gray-500 mt-1">
                         {platform === 'wechat' && setting.authorName && `作者: ${setting.authorName}`}
                         {(platform === 'zhihu' || platform === 'juejin') && '支持开头和结尾内容设置'}
-                        {platform === 'zsxq' && '支持多星球发布和内容定制'}
+                        {platform === 'zsxq' && '知识星球一键发布，自动识别所有星球'}
                       </div>
                     </div>
                   ))}
@@ -409,26 +409,6 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
               {/* 知识星球平台特定字段 */}
               {platform === 'zsxq' && (
                 <>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      知识星球ID列表
-                    </label>
-                    <Textarea
-                      value={editingSettings?.platformConfig?.groupIds?.join('\n') || ''}
-                      onChange={(e) => {
-                        const groupIds = e.target.value.split('\n').filter(id => id.trim());
-                        setEditingSettings(prev => prev ? {
-                          ...prev,
-                          platformConfig: { ...prev.platformConfig, groupIds }
-                        } : null);
-                      }}
-                      placeholder="请输入知识星球ID，每行一个&#10;例如：&#10;28882842528281&#10;28885415242451"
-                      rows={3}
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      支持发布到多个知识星球，每行输入一个星球ID
-                    </p>
-                  </div>
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className="block text-sm font-medium text-gray-700">
