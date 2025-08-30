@@ -77,7 +77,7 @@ export default function Home() {
             <p className="text-lg md:text-xl text-gray-500 leading-relaxed max-w-3xl mx-auto">
               一次创作，智能适配
               <span className="font-medium bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mx-2">
-                公众号、知乎、掘金、小红书
+                公众号、知乎、掘金、知识星球
               </span>
               等平台格式
             </p>
@@ -150,7 +150,7 @@ export default function Home() {
                 🚀
               </div>
               <h3 className="text-2xl font-bold mb-4 text-gray-900">多平台发布</h3>
-              <p className="text-gray-600 leading-relaxed text-lg">支持公众号、知乎、掘金、小红书等主流内容平台</p>
+              <p className="text-gray-600 leading-relaxed text-lg">支持公众号、知乎、掘金、知识星球等主流内容平台</p>
             </div>
           </div>
         </div>

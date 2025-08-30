@@ -7,7 +7,7 @@
 CREATE TABLE publish_presets_new (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
-  platform TEXT NOT NULL CHECK (platform IN ('wechat', 'zhihu', 'juejin', 'xiaohongshu', 'zsxq')),
+  platform TEXT NOT NULL CHECK (platform IN ('wechat', 'zhihu', 'juejin', 'zsxq')),
   user_id TEXT NOT NULL,
   author_name TEXT,
   header_content TEXT,

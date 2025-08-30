@@ -92,7 +92,7 @@ export function PresetSelector({ platform, onApplyPreset }: PresetSelectorProps)
       wechat: '📱',
       zhihu: '🔵',
       juejin: '⚡',
-      xiaohongshu: '📝'
+      zsxq: '🌟'
     };
     return icons[platform] || '📄';
   };
@@ -103,7 +103,7 @@ export function PresetSelector({ platform, onApplyPreset }: PresetSelectorProps)
       wechat: '公众号',
       zhihu: '知乎',
       juejin: '掘金',
-      xiaohongshu: '小红书'
+      zsxq: '知识星球'
     };
     return names[platform] || platform;
   };

@@ -31,7 +31,6 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
       wechat: '📱',
       zhihu: '🔵',
       juejin: '⚡',
-      xiaohongshu: '📝',
       zsxq: '🌟'
     };
     return icons[platform] || '📄';
@@ -43,7 +42,6 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
       wechat: '公众号',
       zhihu: '知乎',
       juejin: '掘金',
-      xiaohongshu: '小红书',
       zsxq: '知识星球'
     };
     return names[platform] || platform;

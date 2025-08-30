@@ -1,6 +1,6 @@
 // 平台特定的发布设置类型定义
 
-export type Platform = 'wechat' | 'zhihu' | 'juejin' | 'xiaohongshu' | 'zsxq';
+export type Platform = 'wechat' | 'zhihu' | 'juejin' | 'zsxq';
 
 // 基础发布设置
 export interface BasePlatformSettings {
@@ -36,10 +36,6 @@ export interface ZhihuSettings extends BasePlatformSettings {
 
 export interface JuejinSettings extends BasePlatformSettings {
   platform: 'juejin';
-}
-
-export interface XiaohongshuSettings extends BasePlatformSettings {
-  platform: 'xiaohongshu';
 }
 
 export interface ZsxqSettings extends BasePlatformSettings {
@@ -82,14 +78,6 @@ export const PLATFORM_CONFIGS: Record<Platform, PlatformInfo> = {
     color: 'bg-cyan-500',
     description: '掘金技术文章发布',
     supportedFeatures: ['分类选择', '标签设置', '难度等级', '封面图片']
-  },
-  xiaohongshu: {
-    id: 'xiaohongshu',
-    name: '小红书',
-    icon: '📝',
-    color: 'bg-red-500',
-    description: '小红书笔记发布',
-    supportedFeatures: ['话题设置', '位置标记', '多图封面', '商业标记']
   },
   zsxq: {
     id: 'zsxq',

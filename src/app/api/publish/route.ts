@@ -7,7 +7,7 @@ import { z } from 'zod';
 const publishSchema = z.object({
   title: z.string().min(1, '标题不能为空'),
   content: z.string().min(1, '内容不能为空'),
-  platform: z.enum(['wechat', 'zhihu', 'juejin', 'xiaohongshu', 'zsxq']),
+  platform: z.enum(['wechat', 'zhihu', 'juejin', 'zsxq']),
   settings: z.object({
     id: z.string(),
     name: z.string(),
@@ -62,9 +62,6 @@ export async function POST(request: NextRequest) {
         break;
       case 'juejin':
         publishResult = await publishToJuejin(title, finalContent, settings);
-        break;
-      case 'xiaohongshu':
-        publishResult = await publishToXiaohongshu(title, finalContent, settings);
         break;
       default:
         throw new Error(`不支持的平台: ${platform}`);
@@ -157,11 +154,3 @@ async function publishToJuejin(title: string, content: string, settings: any) {
   };
 }
 
-async function publishToXiaohongshu(title: string, content: string, settings: any) {
-  // TODO: 实现小红书发布逻辑
-  return {
-    platform: 'xiaohongshu',
-    success: true,
-    message: '小红书发布功能开发中',
-  };
-}

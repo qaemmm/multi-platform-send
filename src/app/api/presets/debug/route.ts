@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 验证平台值
-    const validPlatforms = ['wechat', 'zhihu', 'juejin', 'xiaohongshu'];
+    const validPlatforms = ['wechat', 'zhihu', 'juejin', 'zsxq'];
     if (!validPlatforms.includes(newPlatform)) {
       return NextResponse.json({
         success: false,

@@ -30,7 +30,7 @@ export const publishRecords = sqliteTable('publish_records', {
   id: text('id').primaryKey().$defaultFn(() => createId()),
   articleId: text('article_id').notNull().references(() => articles.id, { onDelete: 'cascade' }),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  platform: text('platform', { enum: ['wechat', 'zhihu', 'juejin', 'xiaohongshu', 'zsxq'] }).notNull(),
+  platform: text('platform', { enum: ['wechat', 'zhihu', 'juejin', 'zsxq'] }).notNull(),
   status: text('status', { enum: ['pending', 'success', 'failed'] }).notNull().default('pending'),
   platformArticleId: text('platform_article_id'), // 平台返回的文章ID
   platformUrl: text('platform_url'), // 发布后的URL
@@ -43,7 +43,7 @@ export const publishPresets = sqliteTable('publish_presets', {
   id: text('id').primaryKey().$defaultFn(() => createId()),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   name: text('name').notNull(), // 预设名称
-  platform: text('platform').notNull().default('wechat'), // 目标平台: wechat, zhihu, juejin, xiaohongshu
+  platform: text('platform').notNull().default('wechat'), // 目标平台: wechat, zhihu, juejin, zsxq
   isDefault: integer('is_default', { mode: 'boolean' }).default(false), // 是否为默认预设
 
   // 作者信息

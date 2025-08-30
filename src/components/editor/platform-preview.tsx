@@ -43,13 +43,6 @@ export function PlatformPreview({ title, content }: PlatformPreviewProps) {
       description: '掘金技术文章'
     },
     {
-      id: 'xiaohongshu' as Platform,
-      name: '小红书',
-      icon: '📝',
-      color: 'bg-red-500',
-      description: '小红书笔记'
-    },
-    {
       id: 'zsxq' as Platform,
       name: '知识星球',
       icon: '🌟',
@@ -144,18 +137,13 @@ export function PlatformPreview({ title, content }: PlatformPreviewProps) {
   const getPlatformUrl = (platform: Platform) => {
     switch (platform) {
       case 'wechat':
-        return 'https://mp.weixin.qq.com/cgi-bin/appmsg?t=media/appmsg_edit_v2&action=edit&isNew=1&type=10&token=&lang=zh_CN';
+        return 'https://mp.weixin.qq.com/';
       case 'zhihu':
         return 'https://zhuanlan.zhihu.com/write';
       case 'juejin':
         return 'https://juejin.cn/editor/drafts/new?v=2';
-      case 'xiaohongshu':
-        return 'https://creator.xiaohongshu.com/publish/publish';
       case 'zsxq':
-        // 知识星球的文章编辑页面，如果有配置的groupId则使用第一个
-        const groupIds = appliedSettings?.platformConfig?.groupIds;
-        const groupId = groupIds && groupIds.length > 0 ? groupIds[0] : '28882842528281';
-        return `https://wx.zsxq.com/article?groupId=${groupId}`;
+        return 'https://wx.zsxq.com/';
       default:
         return '';
     }
@@ -270,7 +258,7 @@ export function PlatformPreview({ title, content }: PlatformPreviewProps) {
       <div className="p-4 border-b border-gray-200 bg-white">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-medium text-gray-700 flex items-center">
-            {selectedPlatform === 'wechat' || selectedPlatform === 'xiaohongshu' ? (
+            {selectedPlatform === 'wechat' ? (
               <Smartphone className="h-4 w-4 mr-2" />
             ) : (
               <Monitor className="h-4 w-4 mr-2" />
@@ -405,7 +393,6 @@ export function PlatformPreview({ title, content }: PlatformPreviewProps) {
             {selectedPlatform === 'wechat' && <WechatPreview title={title} content={previewHtml} />}
             {selectedPlatform === 'zhihu' && <ZhihuPreview title={title} content={previewHtml} />}
             {selectedPlatform === 'juejin' && <JuejinPreview title={title} content={previewHtml} />}
-            {selectedPlatform === 'xiaohongshu' && <XiaohongshuPreview title={title} content={previewHtml} />}
             {selectedPlatform === 'zsxq' && <ZsxqPreview title={title} content={previewHtml} />}
           </>
         )}
@@ -603,120 +590,6 @@ function JuejinPreview({ title, content }: { title: string; content: string }) {
   );
 }
 
-// 小红书预览
-function XiaohongshuPreview({ title, content }: { title: string; content: string }) {
-  return (
-    <div className="p-6 flex justify-center items-center min-h-full bg-gradient-to-br from-pink-50 to-red-50">
-      {/* 手机样机 */}
-      <div className="relative">
-        <div className="w-[390px] h-[844px] bg-black rounded-[60px] p-2 shadow-2xl">
-          <div className="w-full h-full bg-white rounded-[48px] overflow-hidden flex flex-col relative">
-            {/* 动态岛 */}
-            <div className="absolute top-2 left-1/2 transform -translate-x-1/2 w-32 h-8 bg-black rounded-full z-10"></div>
-
-            {/* 状态栏 */}
-            <div className="h-12 bg-white flex items-center justify-between px-6 pt-4">
-              <div className="text-sm font-semibold text-black">9:41</div>
-              <div className="flex items-center space-x-1">
-                <div className="flex space-x-1">
-                  <div className="w-1 h-3 bg-black rounded-full"></div>
-                  <div className="w-1 h-4 bg-black rounded-full"></div>
-                  <div className="w-1 h-5 bg-black rounded-full"></div>
-                  <div className="w-1 h-6 bg-black rounded-full"></div>
-                </div>
-                <svg className="w-4 h-4 text-black" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M2.166 4.999c5.208-5.208 13.651-5.208 18.859 0a.833.833 0 1 1-1.178 1.178c-4.375-4.375-11.471-4.375-15.846 0a.833.833 0 0 1-1.178-1.178z"/>
-                  <path d="M5.01 7.844c3.125-3.125 8.195-3.125 11.32 0a.833.833 0 1 1-1.178 1.178c-2.292-2.292-6.014-2.292-8.306 0a.833.833 0 0 1-1.178-1.178z"/>
-                  <path d="M7.854 10.688c1.042-1.042 2.734-1.042 3.776 0a.833.833 0 1 1-1.178 1.178.833.833 0 0 0-1.178 0 .833.833 0 0 1-1.178-1.178z"/>
-                  <circle cx="10" cy="15" r="1.5"/>
-                </svg>
-                <div className="flex items-center">
-                  <div className="w-6 h-3 border border-black rounded-sm relative">
-                    <div className="w-4 h-1.5 bg-green-500 rounded-sm absolute top-0.5 left-0.5"></div>
-                  </div>
-                  <div className="w-0.5 h-1.5 bg-black rounded-r-sm ml-0.5"></div>
-                </div>
-              </div>
-            </div>
-
-            {/* 小红书头部 */}
-            <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center">
-              <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-sm">
-                小
-              </div>
-              <div className="ml-3 flex-1">
-                <div className="text-base font-medium text-gray-900">字流</div>
-                <div className="text-xs text-gray-500">刚刚</div>
-              </div>
-              <div className="flex items-center space-x-3">
-                <button className="text-red-500 text-sm font-medium">+ 关注</button>
-                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h.01M12 12h.01M19 12h.01" />
-                </svg>
-              </div>
-            </div>
-
-            {/* 笔记标题 */}
-            <div className="px-4 py-3 bg-white">
-              <h2 className="text-lg font-semibold text-gray-900 leading-tight">
-                {title || '小红书笔记标题'}
-              </h2>
-            </div>
-
-            {/* 笔记内容 */}
-            <div className="flex-1 overflow-auto bg-white">
-              <div className="px-4 pb-4">
-                <div
-                  className="xiaohongshu-content text-sm leading-relaxed"
-                  dangerouslySetInnerHTML={{ __html: content }}
-                />
-              </div>
-            </div>
-
-            {/* 底部操作栏 */}
-            <div className="bg-white border-t border-gray-100 px-4 py-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-6">
-                  <button className="flex items-center space-x-1">
-                    <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                    </svg>
-                    <span className="text-sm text-gray-500">点赞</span>
-                  </button>
-                  <button className="flex items-center space-x-1">
-                    <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                    </svg>
-                    <span className="text-sm text-gray-500">评论</span>
-                  </button>
-                  <button className="flex items-center space-x-1">
-                    <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
-                    </svg>
-                    <span className="text-sm text-gray-500">分享</span>
-                  </button>
-                </div>
-                <button className="text-red-500">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            {/* 底部安全区域 */}
-            <div className="h-8 bg-white"></div>
-          </div>
-        </div>
-
-        {/* 手机标签 */}
-        <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xs text-gray-500 font-medium">
-          小红书预览
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // 知识星球预览
 function ZsxqPreview({ title, content }: { title: string; content: string }) {
