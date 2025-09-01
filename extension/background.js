@@ -3,7 +3,7 @@
 // 字流站点配置 - 统一配置域名
 const ZILIU_CONFIG = {
   // 字流站点基础URL（手动配置）
-  baseUrl: 'http://localhost:3000',  // 生产环境改为: 'https://ziliu.online'
+  baseUrl: 'https://ziliu.online',  // 生产环境配置
   
   // 获取完整的API URL
   getApiUrl(path = '') {
@@ -28,10 +28,21 @@ chrome.runtime.onInstalled.addListener(() => {
   // 初始化存储
   chrome.storage.local.set({
     'ziliu_settings': {
-      version: '1.1.0',
+      version: '1.0.0',
       autoFill: true,
       notifications: true
     }
+  });
+});
+
+// 处理插件图标点击事件
+chrome.action.onClicked.addListener((tab) => {
+  console.log('字流助手图标被点击，跳转到官网');
+  
+  // 创建新标签页打开字流官网
+  chrome.tabs.create({
+    url: ZILIU_CONFIG.baseUrl,
+    active: true
   });
 });
 

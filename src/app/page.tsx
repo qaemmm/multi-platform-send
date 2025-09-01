@@ -155,6 +155,15 @@ export default function Home() {
               </div>
               <h3 className="text-2xl font-bold mb-4 text-gray-900">多平台发布</h3>
               <p className="text-gray-600 leading-relaxed text-lg">支持公众号、知乎、掘金、知识星球等主流内容平台</p>
+              <Link href="/extension">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="mt-4 border-purple-300 hover:border-purple-500 hover:bg-purple-50"
+                >
+                  🔌 安装浏览器插件
+                </Button>
+              </Link>
             </div>
           </div>
         </div>

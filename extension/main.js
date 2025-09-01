@@ -7,6 +7,78 @@
 
   console.log('🚀 字流助手启动 - 新架构版本');
 
+  // 监听来自网页的消息
+  window.addEventListener('message', (event) => {
+    // 只处理来自同源或字流网站的消息
+    if (event.origin !== window.location.origin && 
+        !event.origin.includes('ziliu.online') && 
+        !event.origin.includes('localhost:3000')) {
+      return;
+    }
+
+    const { type, data, requestId, source } = event.data;
+
+    switch (type) {
+      case 'ZILIU_EXTENSION_DETECT':
+        console.log('📡 收到网页插件检测请求:', event.data);
+        // 响应插件检测
+        window.postMessage({
+          type: 'ZILIU_EXTENSION_RESPONSE',
+          version: '1.0.0',
+          installed: true,
+          source: 'ziliu-extension'
+        }, '*');
+        break;
+
+      case 'ZILIU_PUBLISH_REQUEST':
+        console.log('🚀 收到发布请求:', data);
+        handlePublishRequest(data, requestId);
+        break;
+    }
+  });
+
+  // 处理发布请求
+  function handlePublishRequest(data, requestId) {
+    try {
+      const { title, content, platform } = data;
+      
+      // 调用现有的发布逻辑
+      if (window.ZiliuApp && window.ZiliuApp.handleOneClickPublish) {
+        window.ZiliuApp.handleOneClickPublish({
+          title,
+          content,
+          platform
+        }).then(result => {
+          // 发送成功响应
+          window.postMessage({
+            type: 'ZILIU_PUBLISH_RESPONSE',
+            requestId,
+            success: true,
+            result
+          }, '*');
+        }).catch(error => {
+          // 发送失败响应
+          window.postMessage({
+            type: 'ZILIU_PUBLISH_RESPONSE',
+            requestId,
+            success: false,
+            error: error.message
+          }, '*');
+        });
+      } else {
+        throw new Error('字流应用尚未初始化完成');
+      }
+    } catch (error) {
+      console.error('❌ 处理发布请求失败:', error);
+      window.postMessage({
+        type: 'ZILIU_PUBLISH_RESPONSE',
+        requestId,
+        success: false,
+        error: error.message
+      }, '*');
+    }
+  }
+
   /**
    * 模块加载器 - 负责按正确顺序加载所有必需模块
    */

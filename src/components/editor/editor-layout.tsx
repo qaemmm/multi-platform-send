@@ -16,6 +16,7 @@ import {
 import Link from 'next/link';
 import { countWords, calculateReadingTime } from '@/lib/utils';
 import { FeishuImportDialog } from './feishu-import-dialog';
+import { SmartPublishButton } from './smart-publish-button';
 
 export type Platform = 'wechat' | 'zhihu' | 'juejin' | 'zsxq';
 
@@ -171,23 +172,63 @@ export function EditorLayout({
       </div>
 
       {/* 左右分栏布局 */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* 左侧：编辑器 */}
-        <div className="w-1/2 border-r border-gray-200">
-          <MultiPlatformEditor
-            title={title}
-            content={content}
-            onTitleChange={handleTitleChange}
-            onContentChange={handleContentChange}
-          />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* 主编辑区域 */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* 左侧：编辑器 */}
+          <div className="w-1/2 border-r border-gray-200">
+            <MultiPlatformEditor
+              title={title}
+              content={content}
+              onTitleChange={handleTitleChange}
+              onContentChange={handleContentChange}
+            />
+          </div>
+
+          {/* 右侧：预览区域 */}
+          <div className="w-1/2 bg-gray-50">
+            <PlatformPreview
+              title={title}
+              content={content}
+            />
+          </div>
         </div>
 
-        {/* 右侧：预览区域 */}
-        <div className="w-1/2 bg-gray-50">
-          <PlatformPreview
-            title={title}
-            content={content}
-          />
+        {/* 底部：智能发布区域 */}
+        <div className="border-t bg-white p-4">
+          <div className="max-w-4xl mx-auto">
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              🚀 一键发布到各平台
+              <span className="text-sm font-normal text-gray-500">
+                （需安装浏览器插件）
+              </span>
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <SmartPublishButton 
+                article={{ title, content }} 
+                platform="wechat" 
+                size="sm"
+              />
+              <SmartPublishButton 
+                article={{ title, content }} 
+                platform="zhihu" 
+                size="sm"
+              />
+              <SmartPublishButton 
+                article={{ title, content }} 
+                platform="juejin" 
+                size="sm"
+              />
+              <SmartPublishButton 
+                article={{ title, content }} 
+                platform="zsxq" 
+                size="sm"
+              />
+            </div>
+            <p className="text-xs text-gray-500 mt-3 text-center">
+              💡 安装浏览器插件后，可以一键将文章内容填充到对应平台的编辑器中
+            </p>
+          </div>
         </div>
       </div>
 
