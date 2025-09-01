@@ -23,11 +23,11 @@ class ApiService {
   async init() {
     try {
       const result = await chrome.storage.sync.get(['apiBaseUrl']);
-      this.config.baseURL = result.apiBaseUrl || 'http://localhost:3000';
+      this.config.baseURL = result.apiBaseUrl || window.ZiliuConstants?.DEFAULT_API_BASE_URL || 'https://ziliu.online';
       console.log('✅ API服务初始化完成，基础URL:', this.config.baseURL);
     } catch (error) {
       console.error('❌ API服务初始化失败:', error);
-      this.config.baseURL = 'http://localhost:3000';
+      this.config.baseURL = window.ZiliuConstants?.DEFAULT_API_BASE_URL || 'https://ziliu.online';
     }
   }
 
@@ -35,33 +35,52 @@ class ApiService {
    * 通用API请求方法
    */
   async makeRequest(endpoint, options = {}) {
-    return new Promise((resolve, reject) => {
-      // 检查extension context是否有效
-      if (!chrome.runtime?.id) {
-        reject(new Error('Extension context invalidated. Please refresh the page.'));
-        return;
-      }
-
-      chrome.runtime.sendMessage({
-        action: 'apiRequest',
-        data: {
-          endpoint,
-          ...options
-        }
-      }, (response) => {
-        if (chrome.runtime.lastError) {
-          console.error('API请求失败:', chrome.runtime.lastError);
-          reject(new Error(chrome.runtime.lastError.message));
+    const timeout = options.timeout || this.config.timeout;
+    
+    return Promise.race([
+      new Promise((resolve, reject) => {
+        // 检查extension context是否有效
+        if (!chrome.runtime?.id) {
+          reject(new Error('Extension context invalidated. Please refresh the page.'));
           return;
         }
 
-        if (response.success) {
-          resolve(response);
-        } else {
-          reject(new Error(response.error || '请求失败'));
-        }
-      });
-    });
+        console.log(`🔗 发起API请求: ${endpoint}`, options);
+        console.log(`📨 发送消息给background script`);
+        
+        chrome.runtime.sendMessage({
+          action: 'apiRequest',
+          data: {
+            endpoint,
+            ...options
+          }
+        }, (response) => {
+          console.log(`📨 收到background script响应:`, response);
+          if (chrome.runtime.lastError) {
+            console.error(`❌ API请求失败 ${endpoint}:`, chrome.runtime.lastError);
+            reject(new Error(chrome.runtime.lastError.message));
+            return;
+          }
+
+          if (response && response.success) {
+            console.log(`✅ API请求成功 ${endpoint}`);
+            resolve(response);
+          } else {
+            const error = response?.error || '请求失败';
+            console.error(`❌ API响应错误 ${endpoint}:`, error);
+            reject(new Error(error));
+          }
+        });
+      }),
+      
+      // 超时处理
+      new Promise((_, reject) => 
+        setTimeout(() => {
+          console.error(`⏰ API请求超时 ${endpoint} (${timeout}ms)`);
+          reject(new Error(`API请求超时: ${endpoint}`));
+        }, timeout)
+      )
+    ]);
   }
 
   /**

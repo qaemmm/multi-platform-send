@@ -1,9 +1,10 @@
 // 字流助手 - 后台脚本
+console.log('🚀 字流助手 Background Script 启动');
 
-// 字流站点配置 - 统一配置域名
+// 字流站点配置 - 直接使用配置
 const ZILIU_CONFIG = {
-  // 字流站点基础URL（手动配置）
-  baseUrl: 'https://ziliu.online',  // 生产环境配置
+  // 字流站点基础URL
+  baseUrl: 'https://www.ziliu.online',
   
   // 获取完整的API URL
   getApiUrl(path = '') {
@@ -47,8 +48,9 @@ chrome.action.onClicked.addListener((tab) => {
 });
 
 // 处理来自网站和popup的消息
+console.log('🎯 注册消息监听器');
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  console.log('📨 收到消息:', message.action);
+  console.log('📨 Background Script 收到消息:', message.action);
 
   // 统一消息处理器
   const messageHandlers = {
@@ -147,10 +149,13 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
 // 处理API请求（解决跨域cookie问题）
 async function handleApiRequest(requestData) {
+  console.log('🔧 handleApiRequest 开始处理请求:', requestData);
+  
   try {
     // 优先从存储中获取API基础URL，否则使用配置文件中的默认值
     const result = await chrome.storage.sync.get(['apiBaseUrl']);
     const API_BASE_URL = result.apiBaseUrl || ZILIU_CONFIG.baseUrl;
+    console.log('🔗 使用API基础URL:', API_BASE_URL);
     const { method = 'GET', endpoint, body, headers = {} } = requestData;
 
     // 验证endpoint
@@ -166,8 +171,7 @@ async function handleApiRequest(requestData) {
         'User-Agent': 'ZiliuAssistant/3.0',
         ...headers
       },
-      credentials: 'include', // 重要：包含cookie
-      timeout: 30000 // 30秒超时
+      credentials: 'include' // 重要：包含cookie
     };
 
     // 只有非GET请求才添加body
@@ -175,7 +179,8 @@ async function handleApiRequest(requestData) {
       fetchOptions.body = JSON.stringify(body);
     }
 
-    console.log(`🌐 API请求 [${method}]:`, endpoint, body ? '(含数据)' : '');
+    console.log(`🌐 API请求 [${method}]:`, url, body ? '(含数据)' : '');
+    console.log('📋 请求配置:', JSON.stringify(fetchOptions, null, 2));
 
     const response = await Promise.race([
       fetch(url, fetchOptions),

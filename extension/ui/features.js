@@ -179,8 +179,8 @@ class ZiliuFeatures {
           window.open(response.data.loginUrl, '_blank');
         } catch (error) {
           console.error('获取登录URL失败:', error);
-          // 兜底使用localhost
-          window.open('http://localhost:3000/login', '_blank');
+          // 兜底使用配置中的登录URL
+          window.open(window.ZiliuConstants?.URLS?.LOGIN || 'https://ziliu.online/login', '_blank');
         }
       });
     }

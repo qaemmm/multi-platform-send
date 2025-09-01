@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "字流助手",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "字流助手 - 智能检测剪贴板内容并填充到公众号编辑器",
   "permissions": [
     "activeTab",
@@ -16,6 +16,7 @@
     "https://zhuanlan.zhihu.com/*",
     "https://juejin.cn/*",
     "https://wx.zsxq.com/*",
+    "https://www.ziliu.online/*",
     "https://ziliu.online/*"
   ],
   "content_scripts": [
@@ -25,6 +26,7 @@
         "http://mp.weixin.qq.com/*"
       ],
       "js": [
+        "core/constants.js",
         "core/event-bus.js",
         "core/config-service.js",
         "core/api-service.js",
@@ -53,6 +55,7 @@
         "https://zhuanlan.zhihu.com/p/*/edit*"
       ],
       "js": [
+        "core/constants.js",
         "core/event-bus.js",
         "core/config-service.js",
         "core/api-service.js",
@@ -80,6 +83,7 @@
         "https://juejin.cn/editor/*"
       ],
       "js": [
+        "core/constants.js",
         "core/event-bus.js",
         "core/config-service.js",
         "core/api-service.js",
@@ -108,6 +112,7 @@
         "https://wx.zsxq.com/article?groupId=*"
       ],
       "js": [
+        "core/constants.js",
         "core/event-bus.js",
         "core/config-service.js",
         "core/api-service.js",
@@ -128,6 +133,18 @@
         "main.js"
       ],
       "run_at": "document_end",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://www.ziliu.online/*",
+        "https://ziliu.online/*"
+      ],
+      "js": [
+        "core/constants.js",
+        "website-detector.js"
+      ],
+      "run_at": "document_start",
       "all_frames": false
     }
   ],

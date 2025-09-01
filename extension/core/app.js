@@ -111,13 +111,31 @@ class ZiliuApp {
         return;
       }
 
-      // 初始化订阅服务
-      await window.ZiliuSubscriptionService.init();
+      // 使用超时机制初始化订阅服务，防止阻塞应用启动
+      await Promise.race([
+        window.ZiliuSubscriptionService.init(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('订阅服务初始化超时')), 15000)
+        )
+      ]);
       
       console.log('✅ 订阅服务初始化完成');
     } catch (error) {
-      console.error('❌ 订阅服务初始化失败:', error);
-      // 不抛出错误，允许应用继续运行
+      console.error('❌ 订阅服务初始化失败:', error.message);
+      console.log('🔄 订阅服务将在后台继续尝试初始化');
+      
+      // 后台异步重试，不阻塞应用启动
+      setTimeout(async () => {
+        try {
+          if (window.ZiliuSubscriptionService) {
+            console.log('🔄 后台重试订阅服务初始化...');
+            await window.ZiliuSubscriptionService.init();
+            console.log('✅ 后台订阅服务初始化成功');
+          }
+        } catch (retryError) {
+          console.warn('⚠️ 后台订阅服务初始化也失败了，将使用默认配置');
+        }
+      }, 5000);
     }
   }
 
@@ -125,29 +143,31 @@ class ZiliuApp {
    * 检测并加载当前平台插件
    */
   async detectAndLoadPlatform() {
-    const currentUrl = window.location.href;
-    console.log('🔍 检测当前页面平台:', currentUrl);
-
-    // 获取匹配的平台配置
-    const matchedPlatforms = this.config.getPluginsForUrl(currentUrl);
-    
-    if (matchedPlatforms.length === 0) {
-      console.log('⚠️ 当前页面不匹配任何平台，跳过平台初始化');
-      return;
-    }
-
-    // 选择优先级最高的平台
-    const platformConfig = matchedPlatforms.sort((a, b) => b.priority - a.priority)[0];
-    console.log('🎯 匹配到平台:', platformConfig.displayName);
-
     try {
+      const currentUrl = window.location.href;
+      console.log('🔍 检测当前页面平台:', currentUrl);
+
+      // 获取匹配的平台配置
+      const matchedPlatforms = this.config.getPluginsForUrl(currentUrl);
+      
+      if (matchedPlatforms.length === 0) {
+        console.log('⚠️ 当前页面不匹配任何平台，跳过平台初始化');
+        return;
+      }
+
+      // 选择优先级最高的平台
+      const platformConfig = matchedPlatforms.sort((a, b) => b.priority - a.priority)[0];
+      console.log('🎯 匹配到平台:', platformConfig.displayName);
+
       // 动态加载平台插件
+      console.log('📦 开始加载平台插件...');
       await this.loadPlatformPlugin(platformConfig);
       this.currentPlatform = platformConfig;
       
       console.log('✅ 平台插件加载完成:', platformConfig.displayName);
       
       // 检查平台权限状态
+      console.log('🔐 检查平台权限...');
       const hasAccess = await this.checkPlatformPermissions(platformConfig);
       
       // 如果没有权限，不加载预设和其他功能
@@ -157,11 +177,14 @@ class ZiliuApp {
       }
       
       // 重新加载对应平台的预设
+      console.log('📋 重新加载平台预设...');
       await this.reloadPresetsForPlatform();
+      console.log('✅ 平台预设加载完成');
       
     } catch (error) {
-      console.error('❌ 平台插件加载失败:', error);
-      // 平台加载失败不应该阻止应用启动
+      console.error('❌ 平台插件加载失败:', error.message);
+      // 平台加载失败不应该阻止应用启动，但要确保继续后续流程
+      console.log('🔄 平台初始化失败，应用将以通用模式继续运行');
     }
   }
 

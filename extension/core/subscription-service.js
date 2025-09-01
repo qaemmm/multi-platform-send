@@ -138,13 +138,42 @@ class SubscriptionService {
   async init() {
     try {
       console.log('🚀 初始化订阅服务...');
-      await this.syncUserPlan();
-      await this.syncUsageStats();
+      
+      // 添加超时机制，防止API调用hang住整个初始化流程
+      const initTimeout = 10000; // 10秒超时
+      
+      await Promise.race([
+        Promise.all([
+          this.syncUserPlan(),
+          this.syncUsageStats()
+        ]),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('订阅服务初始化超时')), initTimeout)
+        )
+      ]);
+      
       console.log('✅ 订阅服务初始化完成');
     } catch (error) {
       console.error('❌ 订阅服务初始化失败:', error);
       this.userPlan.isLoading = false;
       this.usageStats.usageLoading = false;
+      
+      // 设置默认值确保应用可以继续运行
+      this.userPlan = {
+        plan: 'free',
+        planExpiredAt: null,
+        isPro: false,
+        isExpired: false,
+        isLoading: false
+      };
+      
+      this.usageStats = {
+        totalArticles: 0,
+        monthlyImagesUsed: 0,
+        usageLoading: false
+      };
+      
+      console.log('🔄 订阅服务使用默认配置继续运行');
     }
   }
 
@@ -158,7 +187,15 @@ class SubscriptionService {
     }
 
     try {
-      const response = await window.ZiliuApiService.makeRequest('/api/auth/user-plan');
+      console.log('📡 开始同步用户订阅信息...');
+      
+      // 添加超时机制
+      const response = await Promise.race([
+        window.ZiliuApiService.makeRequest('/api/auth/user-plan'),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('用户订阅信息请求超时')), 8000)
+        )
+      ]);
       
       if (response.success) {
         this.userPlan = {
@@ -178,7 +215,7 @@ class SubscriptionService {
       this.lastSync = Date.now();
       console.log('✅ 用户订阅信息同步完成:', this.userPlan);
     } catch (error) {
-      console.error('❌ 同步用户订阅信息失败:', error);
+      console.error('❌ 同步用户订阅信息失败:', error.message);
       this.userPlan = {
         plan: 'free',
         planExpiredAt: null,
@@ -196,10 +233,17 @@ class SubscriptionService {
    */
   async syncUsageStats() {
     try {
-      // 并行获取文章数量和图片使用量
-      const [articlesResponse, imagesResponse] = await Promise.all([
-        window.ZiliuApiService.makeRequest('/api/articles?page=1&limit=1').catch(() => ({ success: false })),
-        window.ZiliuApiService.makeRequest('/api/usage/images').catch(() => ({ success: false }))
+      console.log('📊 开始同步使用统计信息...');
+      
+      // 添加超时机制并行获取文章数量和图片使用量
+      const [articlesResponse, imagesResponse] = await Promise.race([
+        Promise.all([
+          window.ZiliuApiService.makeRequest('/api/articles?page=1&limit=1').catch(() => ({ success: false })),
+          window.ZiliuApiService.makeRequest('/api/usage/images').catch(() => ({ success: false }))
+        ]),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('使用统计信息请求超时')), 8000)
+        )
       ]);
 
       this.usageStats = {
@@ -210,7 +254,7 @@ class SubscriptionService {
 
       console.log('✅ 使用统计信息同步完成:', this.usageStats);
     } catch (error) {
-      console.error('❌ 同步使用统计信息失败:', error);
+      console.error('❌ 同步使用统计信息失败:', error.message);
       this.usageStats = {
         totalArticles: 0,
         monthlyImagesUsed: 0,

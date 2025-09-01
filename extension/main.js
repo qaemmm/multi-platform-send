@@ -9,10 +9,20 @@
 
   // 监听来自网页的消息
   window.addEventListener('message', (event) => {
+    // 调试：记录所有收到的消息
+    if (event.data?.type?.startsWith('ZILIU_')) {
+      console.log('📡 收到字流消息:', event.data.type, 'from:', event.origin);
+    }
+    
     // 只处理来自同源或字流网站的消息
-    if (event.origin !== window.location.origin && 
-        !event.origin.includes('ziliu.online') && 
-        !event.origin.includes('localhost:3000')) {
+    // 使用统一配置检查允许的域名
+    const isAllowedOrigin = event.origin === window.location.origin || 
+                          window.ZiliuConstants?.isAllowedOrigin?.(event.origin) ||
+                          event.origin.includes('ziliu.online') ||
+                          event.origin.includes('www.ziliu.online');
+    
+    if (!isAllowedOrigin) {
+      console.log('🚫 拒绝来自未授权域名的消息:', event.origin);
       return;
     }
 
@@ -22,12 +32,14 @@
       case 'ZILIU_EXTENSION_DETECT':
         console.log('📡 收到网页插件检测请求:', event.data);
         // 响应插件检测
-        window.postMessage({
+        const response = {
           type: 'ZILIU_EXTENSION_RESPONSE',
-          version: '1.0.0',
+          version: window.ZiliuConstants.VERSION,
           installed: true,
           source: 'ziliu-extension'
-        }, '*');
+        };
+        console.log('📤 发送插件检测响应:', response);
+        window.postMessage(response, '*');
         break;
 
       case 'ZILIU_PUBLISH_REQUEST':
