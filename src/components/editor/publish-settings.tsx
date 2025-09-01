@@ -210,7 +210,7 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-6 w-6 p-0"
+                            className="h-6 w-6 p-0 hover:bg-gray-100"
                             onClick={(e) => {
                               e.stopPropagation();
                               setEditingSettings(setting);
@@ -222,7 +222,7 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                            className="h-6 w-6 p-0 text-red-500 hover:bg-red-50"
                             onClick={async (e) => {
                               e.stopPropagation();
                               if (confirm('确定要删除这个设置吗？')) {

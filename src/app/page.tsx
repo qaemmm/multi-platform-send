@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useSession } from "next-auth/react";
+import { CustomerSupportButton } from "@/components/ui/customer-support-button";
 
 export default function Home() {
   const { data: session, status } = useSession();
@@ -27,6 +28,9 @@ export default function Home() {
             </span>
           </div>
           <div className="flex items-center space-x-3">
+            <Link href="/pricing">
+              <Button variant="ghost" size="sm">定价</Button>
+            </Link>
             {status === 'loading' ? (
               <div className="flex items-center space-x-3">
                 <div className="w-16 h-8 bg-gray-200 rounded animate-pulse"></div>
@@ -177,6 +181,9 @@ export default function Home() {
           </div>
         </div>
       </footer>
+      
+      {/* 全局浮动客服按钮 */}
+      <CustomerSupportButton />
     </div>
   );
 }

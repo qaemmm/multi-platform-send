@@ -26,7 +26,7 @@ import {
 interface EditorToolbarProps {
   onInsertText: (text: string, cursorOffset?: number) => void;
   onImageUpload: (url: string, fileName: string) => void;
-  onImageUploadError: (error: string) => void;
+  onImageUploadError: (error: string, upgradeRequired?: boolean) => void;
   disabled?: boolean;
 }
 

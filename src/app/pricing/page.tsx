@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Check, Crown, Gift, ArrowRight, Zap, Sparkles, Star, Users, TrendingUp, Shield, Flame } from 'lucide-react';
 import { FEATURES, PRICING_CONFIG } from '@/lib/subscription/config/features';
 import { RedeemCodeDialog } from '@/components/ui/redeem-code-dialog';
+import { WechatGuideDialog } from '@/components/ui/wechat-guide-dialog';
+import { CustomerSupportButton } from '@/components/ui/customer-support-button';
 
 const featureList = {
   free: [
@@ -32,6 +34,7 @@ const featureList = {
 export default function PricingPage() {
   const { data: session, status } = useSession();
   const [showRedeemDialog, setShowRedeemDialog] = useState(false);
+  const [showWechatGuide, setShowWechatGuide] = useState(false);
 
   const handleRedeemSuccess = (data: any) => {
     alert(data.message);
@@ -277,7 +280,7 @@ export default function PricingPage() {
 
               <div className="pt-4 space-y-3">
                 <Button
-                  onClick={() => setShowRedeemDialog(true)}
+                  onClick={() => setShowWechatGuide(true)}
                   className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-4 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
                   size="lg"
                 >
@@ -423,12 +426,24 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* 兑换码对话框 */}
+      {/* 微信引导和兑换码对话框 */}
+      <WechatGuideDialog
+        isOpen={showWechatGuide}
+        onClose={() => setShowWechatGuide(false)}
+        onProceedToRedeem={() => {
+          setShowWechatGuide(false);
+          setShowRedeemDialog(true);
+        }}
+      />
+      
       <RedeemCodeDialog
         isOpen={showRedeemDialog}
         onClose={() => setShowRedeemDialog(false)}
         onSuccess={handleRedeemSuccess}
       />
+      
+      {/* 全局浮动客服按钮 */}
+      <CustomerSupportButton />
       </div>
     </div>
   );

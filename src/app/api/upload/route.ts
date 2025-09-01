@@ -3,6 +3,10 @@ import { v4 as uuidv4 } from 'uuid';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { applySubscriptionCheck } from '@/lib/middleware/subscription';
+import { db } from '@/lib/db';
+import { imageUsageStats, users } from '@/lib/db/schema';
+import { eq, and } from 'drizzle-orm';
 
 // 配置 Cloudflare R2 客户端
 const r2Client = new S3Client({
@@ -20,9 +24,62 @@ const r2Client = new S3Client({
 const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
+/**
+ * 更新用户的月度图片使用量统计
+ */
+async function updateImageUsageStats(userEmail: string) {
+  try {
+    // 获取用户信息
+    const user = await db.select().from(users).where(eq(users.email, userEmail)).limit(1);
+    if (!user.length) {
+      throw new Error('用户不存在');
+    }
+
+    const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM格式
+    const userId = user[0].id;
+
+    // 查找当月使用量统计记录
+    const existingStats = await db
+      .select()
+      .from(imageUsageStats)
+      .where(and(
+        eq(imageUsageStats.userId, userId),
+        eq(imageUsageStats.month, currentMonth)
+      ))
+      .limit(1);
+
+    if (existingStats.length > 0) {
+      // 更新现有记录
+      await db
+        .update(imageUsageStats)
+        .set({
+          usedCount: existingStats[0].usedCount + 1,
+          updatedAt: new Date()
+        })
+        .where(eq(imageUsageStats.id, existingStats[0].id));
+    } else {
+      // 创建新记录
+      await db.insert(imageUsageStats).values({
+        userId,
+        month: currentMonth,
+        usedCount: 1
+      });
+    }
+  } catch (error) {
+    console.error('更新图片使用量统计失败:', error);
+    throw error;
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
-    // 检查用户认证
+    // 先检查订阅权限
+    const subscriptionCheck = await applySubscriptionCheck(request, 'cloud-images');
+    if (subscriptionCheck) {
+      return subscriptionCheck; // 返回权限检查失败的响应
+    }
+
+    // 权限检查通过，获取session（中间件已经验证过认证）
     const session = await getServerSession(authOptions);
     if (!session) {
       return NextResponse.json(
@@ -91,6 +148,11 @@ export async function POST(request: NextRequest) {
     });
 
     await r2Client.send(uploadCommand);
+
+    // 更新使用量统计
+    if (session.user?.email) {
+      await updateImageUsageStats(session.user.email);
+    }
 
     // 构建公开访问 URL
     const publicUrl = process.env.R2_PUBLIC_URL 

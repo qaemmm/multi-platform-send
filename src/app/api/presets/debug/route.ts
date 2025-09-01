@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { publishPresets, users } from '@/drizzle/schema';
+import { publishPresets, users } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 
 // 调试预设数据的API端点
@@ -37,10 +37,10 @@ export async function GET(request: NextRequest) {
     // 分析预设数据
     const analysis = {
       totalPresets: presets.length,
-      platformDistribution: {},
+      platformDistribution: {} as Record<string, number>,
       presetsWithoutPlatform: 0,
       presetsWithContent: 0,
-      zhihuPresets: [],
+      zhihuPresets: [] as any[],
       allPresets: presets.map(preset => ({
         id: preset.id,
         name: preset.name,

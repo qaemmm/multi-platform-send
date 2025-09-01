@@ -3,10 +3,11 @@
 import { useState, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Upload, Loader2, Image as ImageIcon, X } from 'lucide-react';
+import { useImageUploadService, ImageUploadResult } from '@/lib/services/imageUploadService';
 
 interface ImageUploadProps {
   onUpload: (url: string, fileName: string) => void;
-  onError?: (error: string) => void;
+  onError?: (error: string, upgradeRequired?: boolean) => void;
   disabled?: boolean;
   className?: string;
 }
@@ -23,6 +24,9 @@ export function ImageUpload({ onUpload, onError, disabled = false, className = '
   const [isDragging, setIsDragging] = useState(false);
   const [uploads, setUploads] = useState<UploadProgress[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // 使用统一的图片上传服务
+  const imageUploadService = useImageUploadService();
 
   const handleFileUpload = useCallback(async (files: FileList) => {
     if (disabled) return;
@@ -44,58 +48,57 @@ export function ImageUpload({ onUpload, onError, disabled = false, className = '
 
     setUploads(prev => [...prev, ...newUploads]);
 
-    // 并发上传所有图片
-    const uploadPromises = imageFiles.map(async (file, index) => {
-      try {
-        const formData = new FormData();
-        formData.append('file', file);
-
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-          // 更新上传状态为成功
-          setUploads(prev => prev.map((upload, i) => 
-            upload.fileName === file.name 
-              ? { ...upload, status: 'success', progress: 100, url: data.data.url }
+    // 使用统一上传服务
+    const results = await imageUploadService.uploadMultipleImages(imageFiles, {
+      onProgress: (overallProgress) => {
+        // 这里可以更新整体进度，暂时简化
+      },
+      onSuccess: (result) => {
+        if (result.data) {
+          // 找到对应文件并更新状态
+          setUploads(prev => prev.map(upload => 
+            upload.fileName === result.data!.fileName
+              ? { ...upload, status: 'success', progress: 100, url: result.data!.url }
               : upload
           ));
 
           // 调用回调函数
-          onUpload(data.data.url, file.name);
+          onUpload(result.data.url, result.data.fileName);
 
           // 2秒后移除成功的上传项
           setTimeout(() => {
-            setUploads(prev => prev.filter(upload => upload.fileName !== file.name));
+            setUploads(prev => prev.filter(upload => upload.fileName !== result.data!.fileName));
           }, 2000);
-        } else {
-          throw new Error(data.error || '上传失败');
         }
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : '上传失败';
-        
-        // 更新上传状态为失败
-        setUploads(prev => prev.map(upload => 
-          upload.fileName === file.name 
-            ? { ...upload, status: 'error', error: errorMessage }
-            : upload
-        ));
-
-        onError?.(errorMessage);
-
-        // 5秒后移除失败的上传项
-        setTimeout(() => {
-          setUploads(prev => prev.filter(upload => upload.fileName !== file.name));
-        }, 5000);
+      },
+      onError: (error, upgradeRequired) => {
+        onError?.(error, upgradeRequired);
       }
     });
 
-    await Promise.all(uploadPromises);
-  }, [disabled, onUpload, onError]);
+    // 处理失败的上传
+    results.forEach((result, index) => {
+      if (!result.success) {
+        const fileName = imageFiles[index].name;
+        
+        setUploads(prev => prev.map(upload => 
+          upload.fileName === fileName
+            ? { ...upload, status: 'error', error: result.error }
+            : upload
+        ));
+
+        // 如果需要升级，触发错误回调
+        if (result.upgradeRequired) {
+          onError?.(result.error || '上传失败', result.upgradeRequired);
+        }
+
+        // 5秒后移除失败的上传项
+        setTimeout(() => {
+          setUploads(prev => prev.filter(upload => upload.fileName !== fileName));
+        }, 5000);
+      }
+    });
+  }, [disabled, onUpload, onError, imageUploadService]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();

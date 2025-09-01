@@ -6,7 +6,12 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { PlusCircle, FileText, LogOut, User, ChevronLeft, ChevronRight } from 'lucide-react';
+import { PlusCircle, FileText, LogOut, User, ChevronLeft, ChevronRight, Crown, Gift } from 'lucide-react';
+import { RedeemCodeDialog } from '@/components/ui/redeem-code-dialog';
+import { useUserPlan } from '@/lib/subscription/hooks/useUserPlan';
+import { UpgradePrompt } from '@/lib/subscription/components/UpgradePrompt';
+import { ArticleCreationGuard } from '@/lib/subscription/components/FeatureGuard';
+import { CustomerSupportButton } from '@/components/ui/customer-support-button';
 
 interface Article {
   id: string;
@@ -26,7 +31,11 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [showRedeemDialog, setShowRedeemDialog] = useState(false);
   const articlesPerPage = 5;
+  
+  // 使用新的订阅Hook，已包含文章数量管理
+  const { plan, planExpiredAt, isPro, totalArticles, getFeatureLimit, refreshPlan, refreshUsage } = useUserPlan();
 
   useEffect(() => {
     if (status === 'loading') return;
@@ -49,6 +58,10 @@ export default function DashboardPage() {
         setArticles(data.data.articles);
         setTotalPages(Math.ceil(data.data.total / articlesPerPage));
         setCurrentPage(page);
+        // 如果文章数量有变化，更新使用统计
+        if (data.data.total !== totalArticles) {
+          refreshUsage();
+        }
       } else {
         console.error('获取文章列表失败:', data.error);
       }
@@ -65,9 +78,26 @@ export default function DashboardPage() {
     }
   };
 
+  const handleRedeemSuccess = (data: any) => {
+    // 刷新订阅信息
+    refreshPlan();
+    
+    // 显示成功提示
+    alert(data.message);
+  };
+
   const handleSignOut = () => {
     signOut({ callbackUrl: '/' });
   };
+
+  // 格式化过期时间
+  const formatExpiredDate = (dateString?: string) => {
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleDateString('zh-CN');
+  };
+  
+  // 检查文章限制
+  const articleLimit = getFeatureLimit('unlimited-articles');
 
   if (status === 'loading') {
     return (
@@ -104,12 +134,65 @@ export default function DashboardPage() {
             </div>
 
             <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-3 px-3 py-2 bg-white/60 rounded-full border border-white/40">
-                <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-full flex items-center justify-center">
-                  <User className="h-3 w-3 text-white" />
+              {/* 订阅状态 */}
+              <div className={`flex items-center space-x-3 px-3 py-2 rounded-full border ${
+                isPro 
+                  ? 'bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-200' 
+                  : 'bg-white/60 border-white/40'
+              }`}>
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                  isPro 
+                    ? 'bg-gradient-to-br from-yellow-500 to-orange-500' 
+                    : 'bg-gradient-to-br from-blue-500 to-indigo-500'
+                }`}>
+                  {isPro ? (
+                    <Crown className="h-3 w-3 text-white" />
+                  ) : (
+                    <User className="h-3 w-3 text-white" />
+                  )}
                 </div>
-                <span className="text-sm font-medium text-gray-700">{session.user?.name}</span>
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium text-gray-700">
+                    {session.user?.name}
+                  </span>
+                  {isPro ? (
+                    <span className="text-xs text-yellow-600">
+                      专业版 · 至{formatExpiredDate(planExpiredAt)}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-gray-500">
+                      免费版 · {articleLimit > 0 && `${totalArticles}/${articleLimit}文章`}
+                    </span>
+                  )}
+                </div>
               </div>
+              
+              {/* 订阅管理区域 */}
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowRedeemDialog(true)}
+                  className="bg-white/60 border-white/40 hover:bg-white/80 backdrop-blur-sm"
+                >
+                  <Gift className="h-4 w-4 mr-2" />
+                  兑换码
+                </Button>
+                
+                {!isPro && (
+                  <Link href="/pricing">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-200 text-yellow-700 hover:from-yellow-100 hover:to-orange-100 hover:border-yellow-300"
+                    >
+                      <Crown className="h-4 w-4 mr-2" />
+                      了解专业版
+                    </Button>
+                  </Link>
+                )}
+              </div>
+              
               <Button
                 variant="outline"
                 size="sm"
@@ -152,11 +235,13 @@ export default function DashboardPage() {
                   <p className="text-sm text-gray-600">开始创作新的内容</p>
                 </div>
               </div>
-              <Link href="/editor/new">
-                <Button className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium py-2.5 rounded-lg transition-all duration-200">
-                  开始创作
-                </Button>
-              </Link>
+              <ArticleCreationGuard>
+                <Link href="/editor/new">
+                  <Button className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium py-2.5 rounded-lg transition-all duration-200">
+                    开始创作
+                  </Button>
+                </Link>
+              </ArticleCreationGuard>
             </CardContent>
           </Card>
 
@@ -299,8 +384,24 @@ export default function DashboardPage() {
           )}
         </div>
 
+        {/* 升级提示 - 只在达到限制时显示 */}
+        {!isPro && totalArticles > 0 && (
+          <div className="mt-8">
+            <UpgradePrompt scenario="dashboard-upgrade" />
+          </div>
+        )}
 
       </main>
+
+      {/* 兑换码对话框 */}
+      <RedeemCodeDialog
+        isOpen={showRedeemDialog}
+        onClose={() => setShowRedeemDialog(false)}
+        onSuccess={handleRedeemSuccess}
+      />
+      
+      {/* 全局浮动客服按钮 */}
+      <CustomerSupportButton />
     </div>
   );
 }

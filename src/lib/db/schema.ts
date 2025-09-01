@@ -8,6 +8,8 @@ export const users = sqliteTable('users', {
   name: text('name'),
   passwordHash: text('password_hash'),
   avatar: text('avatar'),
+  plan: text('plan', { enum: ['free', 'pro'] }).notNull().default('free'),
+  planExpiredAt: integer('plan_expired_at', { mode: 'timestamp' }),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
@@ -63,6 +65,30 @@ export const publishPresets = sqliteTable('publish_presets', {
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
 
+// 兑换码表
+export const redeemCodes = sqliteTable('redeem_codes', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  code: text('code').notNull().unique(), // 兑换码
+  type: text('type', { enum: ['monthly', 'yearly'] }).notNull(), // 兑换码类型：月卡、年卡
+  duration: integer('duration').notNull(), // 时长（月数）
+  isUsed: integer('is_used', { mode: 'boolean' }).notNull().default(false), // 是否已使用
+  usedBy: text('used_by').references(() => users.id), // 使用者用户ID
+  usedAt: integer('used_at', { mode: 'timestamp' }), // 使用时间
+  createdBy: text('created_by'), // 创建者（管理员标识）
+  note: text('note'), // 备注信息
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+});
+
+// 图片使用统计表
+export const imageUsageStats = sqliteTable('image_usage_stats', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  month: text('month').notNull(), // 格式：YYYY-MM
+  usedCount: integer('used_count').notNull().default(0), // 当月已使用的图片数量
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+});
+
 // 类型导出
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -72,3 +98,7 @@ export type PublishRecord = typeof publishRecords.$inferSelect;
 export type NewPublishRecord = typeof publishRecords.$inferInsert;
 export type PublishPreset = typeof publishPresets.$inferSelect;
 export type NewPublishPreset = typeof publishPresets.$inferInsert;
+export type RedeemCode = typeof redeemCodes.$inferSelect;
+export type NewRedeemCode = typeof redeemCodes.$inferInsert;
+export type ImageUsageStat = typeof imageUsageStats.$inferSelect;
+export type NewImageUsageStat = typeof imageUsageStats.$inferInsert;

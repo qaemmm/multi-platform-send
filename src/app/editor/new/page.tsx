@@ -4,10 +4,13 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { EditorLayout } from '@/components/editor/editor-layout';
+import { useUserPlan } from '@/lib/subscription/hooks/useUserPlan';
+import { ArticleCreationGuard } from '@/lib/subscription/components/FeatureGuard';
 
 export default function NewEditorPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const { refreshUsage } = useUserPlan();
 
   useEffect(() => {
     if (status === 'loading') return;
@@ -33,8 +36,9 @@ export default function NewEditorPage() {
 
       const data = await response.json();
       if (data.success) {
-        // 保存成功，跳转到编辑页面
+        // 保存成功，更新使用统计并跳转到编辑页面
         console.log('文章保存成功:', data.data);
+        refreshUsage(); // 刷新文章数量统计
         router.push(`/editor/${data.data.id}`);
       } else {
         throw new Error(data.error || '保存失败');
@@ -61,6 +65,8 @@ export default function NewEditorPage() {
   }
 
   return (
-    <EditorLayout onSave={handleSave} />
+    <ArticleCreationGuard>
+      <EditorLayout onSave={handleSave} />
+    </ArticleCreationGuard>
   );
 }

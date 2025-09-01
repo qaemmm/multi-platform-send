@@ -5,8 +5,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Upload } from 'lucide-react';
+import { Upload, CheckCircle2, AlertTriangle, Info } from 'lucide-react';
 import { EditorToolbar } from './editor-toolbar';
+import { useImageUploadService } from '@/lib/services/imageUploadService';
+import { UpgradePrompt } from '@/lib/subscription/components/UpgradePrompt';
 
 
 interface EditorProps {
@@ -23,6 +25,18 @@ export function MultiPlatformEditor({
   onContentChange
 }: EditorProps) {
   const [isDraggingFile, setIsDraggingFile] = useState(false);
+  const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' | 'info' }>({ visible: false, message: '', type: 'success' });
+  const [showImageUpgradePrompt, setShowImageUpgradePrompt] = useState(false);
+  
+  // 使用统一的图片上传服务
+  const imageUploadService = useImageUploadService();
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setToast({ visible: true, message, type });
+    window.setTimeout(() => {
+      setToast((prev) => ({ ...prev, visible: false }));
+    }, 3000);
+  };
 
 
 
@@ -47,9 +61,15 @@ export function MultiPlatformEditor({
   }, [content, onContentChange]);
 
   // 处理图片上传错误
-  const handleImageUploadError = useCallback((error: string) => {
+  const handleImageUploadError = useCallback((error: string, upgradeRequired?: boolean) => {
     console.error('图片上传失败:', error);
-  }, []);
+    if (upgradeRequired) {
+      // 显示专业的订阅引导弹窗
+      setShowImageUpgradePrompt(true);
+    } else {
+      showToast(error, 'error');
+    }
+  }, [showToast]);
 
   // 插入文本到编辑器
   const handleInsertText = useCallback((text: string, cursorOffset?: number) => {
@@ -94,35 +114,27 @@ export function MultiPlatformEditor({
     e.stopPropagation();
     setIsDraggingFile(false);
 
-    const files = Array.from(e.dataTransfer.files);
-    const imageFiles = files.filter(file => file.type.startsWith('image/'));
-
-    if (imageFiles.length === 0) {
-      showToast('请拖拽图片文件', 'error');
-      return;
-    }
-
-    for (const file of imageFiles) {
-      try {
-        const formData = new FormData();
-        formData.append('file', file);
-
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
-        });
-
-        const data = await response.json();
-        if (data.success) {
-          handleImageUpload(data.data.url, file.name);
-        } else {
-          throw new Error(data.error || '上传失败');
+    // 使用统一的图片上传服务
+    const results = await imageUploadService.uploadFromDrop(e.nativeEvent, {
+      onSuccess: (result) => {
+        if (result.data) {
+          handleImageUpload(result.data.url, result.data.fileName);
         }
-      } catch (error) {
-        handleImageUploadError(error instanceof Error ? error.message : '上传失败');
+      },
+      onError: (error, upgradeRequired) => {
+        handleImageUploadError(error, upgradeRequired);
       }
-    }
-  }, [handleImageUpload, handleImageUploadError]);
+    });
+
+    // 处理批量结果
+    results.forEach(result => {
+      if (result.success && result.data) {
+        handleImageUpload(result.data.url, result.data.fileName);
+      } else if (!result.success) {
+        handleImageUploadError(result.error || '上传失败', result.upgradeRequired);
+      }
+    });
+  }, [imageUploadService, handleImageUpload, handleImageUploadError]);
 
   // 检测是否为飞书内容
   const isFeishuContent = (content: string): boolean => {
@@ -164,7 +176,13 @@ export function MultiPlatformEditor({
         if (data.success) {
           // 直接替换编辑器内容
           onContentChange(data.markdown);
-          showToast('飞书内容导入成功！', 'success');
+          
+          // 检查是否有图片警告
+          if (data.imageWarning) {
+            showToast(`飞书内容导入成功！${data.imageWarning}`, 'info');
+          } else {
+            showToast('飞书内容导入成功！', 'success');
+          }
         } else {
           throw new Error(data.error || '解析失败');
         }
@@ -179,31 +197,28 @@ export function MultiPlatformEditor({
     if (imageItems.length > 0) {
       e.preventDefault();
 
-      for (const item of imageItems) {
-        const file = item.getAsFile();
-        if (!file) continue;
-
-        try {
-          const formData = new FormData();
-          formData.append('file', file);
-
-          const response = await fetch('/api/upload', {
-            method: 'POST',
-            body: formData,
-          });
-
-          const data = await response.json();
-          if (data.success) {
-            handleImageUpload(data.data.url, `pasted-image-${Date.now()}.png`);
-          } else {
-            throw new Error(data.error || '上传失败');
+      // 使用统一的图片上传服务
+      const results = await imageUploadService.uploadFromPaste(e.nativeEvent, {
+        onSuccess: (result) => {
+          if (result.data) {
+            handleImageUpload(result.data.url, result.data.fileName);
           }
-        } catch (error) {
-          handleImageUploadError(error instanceof Error ? error.message : '上传失败');
+        },
+        onError: (error, upgradeRequired) => {
+          handleImageUploadError(error, upgradeRequired);
         }
-      }
+      });
+
+      // 处理批量结果
+      results.forEach(result => {
+        if (result.success && result.data) {
+          handleImageUpload(result.data.url, result.data.fileName);
+        } else if (!result.success) {
+          handleImageUploadError(result.error || '上传失败', result.upgradeRequired);
+        }
+      });
     }
-  }, [handleImageUpload, handleImageUploadError, onContentChange]);
+  }, [handleImageUpload, handleImageUploadError, onContentChange, imageUploadService]);
 
 
 
@@ -282,6 +297,32 @@ console.log('代码示例');
           />
         </div>
       </div>
+
+      {/* Toast 通知 */}
+      {toast.visible && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <div className={`
+            flex items-center space-x-2 px-4 py-3 rounded-lg shadow-lg border
+            ${toast.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : ''}
+            ${toast.type === 'error' ? 'bg-red-50 border-red-200 text-red-800' : ''}
+            ${toast.type === 'info' ? 'bg-blue-50 border-blue-200 text-blue-800' : ''}
+          `}>
+            {toast.type === 'success' && <CheckCircle2 className="h-4 w-4 flex-shrink-0" />}
+            {toast.type === 'error' && <AlertTriangle className="h-4 w-4 flex-shrink-0" />}
+            {toast.type === 'info' && <Info className="h-4 w-4 flex-shrink-0" />}
+            <span className="text-sm font-medium">{toast.message}</span>
+          </div>
+        </div>
+      )}
+
+      {/* 图片超限订阅引导弹窗 */}
+      {showImageUpgradePrompt && (
+        <UpgradePrompt 
+          scenario="cloud-images-limit" 
+          style="modal"
+          onClose={() => setShowImageUpgradePrompt(false)}
+        />
+      )}
     </div>
   );
 }

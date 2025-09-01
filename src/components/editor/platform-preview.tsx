@@ -2,8 +2,12 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Platform } from '@/types/platform-settings';
-import { Smartphone, Monitor, Palette, Loader2, ExternalLink, Send } from 'lucide-react';
+import { Smartphone, Monitor, Palette, Loader2, ExternalLink, Send, Settings } from 'lucide-react';
 import { PublishSettings } from './publish-settings';
+import { useUserPlan } from '@/lib/subscription/hooks/useUserPlan';
+import { PlatformGuard, StyleGuard } from '@/lib/subscription/components/FeatureGuard';
+import { UpgradePrompt } from '@/lib/subscription/components/UpgradePrompt';
+import { Crown } from 'lucide-react';
 
 interface PlatformPreviewProps {
   title: string;
@@ -18,6 +22,9 @@ export function PlatformPreview({ title, content }: PlatformPreviewProps) {
   const [appliedSettings, setAppliedSettings] = useState<any>(null);
   const [finalContent, setFinalContent] = useState('');
   const [isPublishing, setIsPublishing] = useState(false);
+  
+  // 添加订阅信息
+  const { hasFeature, checkFeatureAccess } = useUserPlan();
 
   // 平台配置
   const platforms = [
@@ -279,20 +286,40 @@ export function PlatformPreview({ title, content }: PlatformPreviewProps) {
             <span className="text-sm font-medium text-gray-700">发布平台:</span>
           </div>
           <div className="flex bg-gray-100 rounded-lg p-1">
-            {platforms.map((platform) => (
-              <button
-                key={platform.id}
-                onClick={() => handlePlatformChange(platform.id)}
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 flex items-center space-x-2 ${
-                  selectedPlatform === platform.id
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                <span>{platform.icon}</span>
-                <span>{platform.name}</span>
-              </button>
-            ))}
+            {platforms.map((platform) => {
+              const platformFeatureId = `${platform.id}-platform`;
+              const hasAccess = hasFeature(platformFeatureId);
+              const accessResult = checkFeatureAccess(platformFeatureId);
+              
+              return (
+                <div key={platform.id} className="relative">
+                  <button
+                    onClick={() => {
+                      if (hasAccess) {
+                        handlePlatformChange(platform.id);
+                      } else {
+                        alert(accessResult.reason || '此平台需要专业版权限');
+                      }
+                    }}
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 flex items-center space-x-2 ${
+                      selectedPlatform === platform.id
+                        ? 'bg-white text-gray-900 shadow-sm'
+                        : hasAccess 
+                          ? 'text-gray-600 hover:text-gray-900'
+                          : 'text-gray-400 cursor-not-allowed opacity-60'
+                    }`}
+                    disabled={!hasAccess}
+                    title={!hasAccess ? accessResult.reason : platform.description}
+                  >
+                    <span>{platform.icon}</span>
+                    <span>{platform.name}</span>
+                    {!hasAccess && platform.id !== 'wechat' && (
+                      <span className="text-xs text-yellow-600 ml-1">💎</span>
+                    )}
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -305,28 +332,55 @@ export function PlatformPreview({ title, content }: PlatformPreviewProps) {
             </div>
             <select
               value={selectedStyle}
-              onChange={(e) => handleStyleChange(e.target.value)}
+              onChange={(e) => {
+                const newStyle = e.target.value;
+                if (newStyle !== 'default') {
+                  const styleAccess = checkFeatureAccess('advanced-styles');
+                  if (!styleAccess.hasAccess) {
+                    alert(styleAccess.reason || '高级样式需要专业版权限');
+                    return;
+                  }
+                }
+                handleStyleChange(newStyle);
+              }}
               className="text-sm border border-gray-200 rounded-md px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="default">默认样式</option>
-              <option value="tech">技术风格</option>
-              <option value="minimal">简约风格</option>
+              <option value="tech" disabled={!hasFeature('advanced-styles')}>
+                技术风格 {!hasFeature('advanced-styles') ? '💎' : ''}
+              </option>
+              <option value="minimal" disabled={!hasFeature('advanced-styles')}>
+                简约风格 {!hasFeature('advanced-styles') ? '💎' : ''}
+              </option>
             </select>
           </div>
 
           <div className="flex items-center space-x-3">
             {/* 发布设置 */}
-            <PublishSettings
-              platform={selectedPlatform}
-              onApplySettings={(settings) => {
-                console.log('应用发布设置:', settings);
-                setAppliedSettings(settings);
-                // 立即重新预览
-                setTimeout(() => {
-                  handlePreview(selectedPlatform, selectedStyle);
-                }, 100);
-              }}
-            />
+            {hasFeature('publish-presets') ? (
+              <PublishSettings
+                platform={selectedPlatform}
+                onApplySettings={(settings) => {
+                  console.log('应用发布设置:', settings);
+                  setAppliedSettings(settings);
+                  // 立即重新预览
+                  setTimeout(() => {
+                    handlePreview(selectedPlatform, selectedStyle);
+                  }, 100);
+                }}
+              />
+            ) : (
+              <button
+                onClick={() => {
+                  alert('发布设置功能仅限专业版用户使用，请升级后体验完整功能');
+                }}
+                className="flex items-center space-x-1 px-3 py-2 border border-gray-200 rounded-md text-sm font-medium bg-gray-50 text-gray-400 cursor-not-allowed transition-colors hover:bg-gray-100"
+              >
+                <Settings className="h-4 w-4" />
+                <span>发布设置</span>
+                <Crown className="h-3 w-3 text-amber-500" />
+              </button>
+            )}
 
             {/* 去发布按钮 */}
             <button
@@ -371,7 +425,7 @@ export function PlatformPreview({ title, content }: PlatformPreviewProps) {
       </div>
 
       {/* 预览内容 */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto flex flex-col">
         {isConverting || !content ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
@@ -389,12 +443,43 @@ export function PlatformPreview({ title, content }: PlatformPreviewProps) {
             </div>
           </div>
         ) : (
-          <>
-            {selectedPlatform === 'wechat' && <WechatPreview title={title} content={previewHtml} />}
-            {selectedPlatform === 'zhihu' && <ZhihuPreview title={title} content={previewHtml} />}
-            {selectedPlatform === 'juejin' && <JuejinPreview title={title} content={previewHtml} />}
-            {selectedPlatform === 'zsxq' && <ZsxqPreview title={title} content={previewHtml} />}
-          </>
+          <div className="flex-1 flex flex-col">
+            <div className="flex-1">
+              {selectedPlatform === 'wechat' && <WechatPreview title={title} content={previewHtml} />}
+              {selectedPlatform === 'zhihu' && <ZhihuPreview title={title} content={previewHtml} />}
+              {selectedPlatform === 'juejin' && <JuejinPreview title={title} content={previewHtml} />}
+              {selectedPlatform === 'zsxq' && <ZsxqPreview title={title} content={previewHtml} />}
+            </div>
+
+            {/* 升级提示区域 */}
+            <div className="p-4 bg-gray-50 border-t border-gray-200">
+              {/* 平台权限提示 */}
+              {selectedPlatform !== 'wechat' && !hasFeature(`${selectedPlatform}-platform`) && (
+                <div className="mb-3">
+                  <UpgradePrompt scenario="platform-locked" style="inline" />
+                </div>
+              )}
+
+              {/* 样式权限提示 */}
+              {selectedStyle !== 'default' && !hasFeature('advanced-styles') && (
+                <div className="mb-3">
+                  <UpgradePrompt scenario="style-locked" style="inline" />
+                </div>
+              )}
+
+              {/* 发布预设提示 */}
+              {selectedPlatform !== 'wechat' && !hasFeature('publish-presets') && !appliedSettings && (
+                <div className="mb-3">
+                  <UpgradePrompt scenario="preset-locked" style="inline" />
+                </div>
+              )}
+
+              {/* 如果没有任何限制，显示一般升级提示 */}
+              {selectedPlatform === 'wechat' && selectedStyle === 'default' && (
+                <UpgradePrompt scenario="dashboard-upgrade" style="inline" />
+              )}
+            </div>
+          </div>
         )}
       </div>
     </div>

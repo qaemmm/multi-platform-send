@@ -35,13 +35,12 @@ export async function GET(request: NextRequest) {
     const platform = searchParams.get('platform') as Platform | null;
 
     // 构建查询条件
-    let whereCondition = eq(publishPresets.userId, user.id);
-    if (platform) {
-      whereCondition = and(
-        eq(publishPresets.userId, user.id),
-        eq(publishPresets.platform, platform)
-      );
-    }
+    const whereCondition = platform 
+      ? and(
+          eq(publishPresets.userId, user.id),
+          eq(publishPresets.platform, platform)
+        )
+      : eq(publishPresets.userId, user.id);
 
     // 获取用户的预设列表
     const presets = await db.query.publishPresets.findMany({
