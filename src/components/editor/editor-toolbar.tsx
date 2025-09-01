@@ -27,6 +27,8 @@ interface EditorToolbarProps {
   onInsertText: (text: string, cursorOffset?: number) => void;
   onImageUpload: (url: string, fileName: string) => void;
   onImageUploadError: (error: string, upgradeRequired?: boolean) => void;
+  showPreview?: boolean;
+  onTogglePreview?: () => void;
   disabled?: boolean;
 }
 
@@ -34,6 +36,8 @@ export function EditorToolbar({
   onInsertText,
   onImageUpload,
   onImageUploadError,
+  showPreview,
+  onTogglePreview,
   disabled = false
 }: EditorToolbarProps) {
 

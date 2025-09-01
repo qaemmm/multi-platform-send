@@ -48,7 +48,9 @@ export class ImageUploadService {
           featureId: 'cloud-images'
         };
         
-        options?.onError?.(result.error, result.upgradeRequired);
+        if (result.error) {
+          options?.onError?.(result.error, result.upgradeRequired);
+        }
         return result;
       }
 
@@ -60,7 +62,9 @@ export class ImageUploadService {
           error: validationResult.error
         };
         
-        options?.onError?.(result.error);
+        if (result.error) {
+          options?.onError?.(result.error);
+        }
         return result;
       }
 
@@ -92,7 +96,9 @@ export class ImageUploadService {
           featureId: result.featureId
         };
         
-        options?.onError?.(uploadResult.error, uploadResult.upgradeRequired);
+        if (uploadResult.error) {
+          options?.onError?.(uploadResult.error, uploadResult.upgradeRequired);
+        }
         return uploadResult;
       }
 
@@ -149,7 +155,9 @@ export class ImageUploadService {
         success: false,
         error: '请拖拽图片文件'
       };
-      options?.onError?.(result.error);
+      if (result.error) {
+        options?.onError?.(result.error);
+      }
       return [result];
     }
 
@@ -176,7 +184,9 @@ export class ImageUploadService {
         success: false,
         error: '无法获取粘贴的图片'
       };
-      options?.onError?.(result.error);
+      if (result.error) {
+        options?.onError?.(result.error);
+      }
       return [result];
     }
 
