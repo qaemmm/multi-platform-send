@@ -75,8 +75,8 @@ export default function ExtensionPage() {
     try {
       // 创建下载链接
       const link = document.createElement('a');
-      link.href = '/ziliu-extension-v1.0.0.zip'; // 需要将zip文件放到public目录
-      link.download = 'ziliu-extension-v1.0.0.zip';
+      link.href = '/ziliu-extension-v1.1.0.zip'; // 需要将zip文件放到public目录
+      link.download = 'ziliu-extension-v1.1.0.zip';
       link.click();
     } catch (error) {
       console.error('下载失败:', error);
@@ -182,7 +182,7 @@ export default function ExtensionPage() {
                   ) : (
                     <>
                       <Download className="mr-2" />
-                      下载插件文件 (v1.0.0)
+                      下载插件文件 (v1.1.0)
                     </>
                   )}
                 </Button>
@@ -209,7 +209,7 @@ export default function ExtensionPage() {
                   </div>
                   <div>
                     <h3 className="font-medium">下载并解压插件文件</h3>
-                    <p className="text-gray-600">点击上方按钮下载 ziliu-extension-v1.0.0.zip，然后解压到任意文件夹</p>
+                    <p className="text-gray-600">点击上方按钮下载 ziliu-extension-v1.1.0.zip，然后解压到任意文件夹</p>
                   </div>
                 </div>
 

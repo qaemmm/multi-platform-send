@@ -2,12 +2,14 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Platform } from '@/types/platform-settings';
-import { Smartphone, Monitor, Palette, Loader2, ExternalLink, Send, Settings } from 'lucide-react';
+import { Smartphone, Monitor, Palette, Loader2, ExternalLink, Settings, Chrome, Copy } from 'lucide-react';
 import { PublishSettings } from './publish-settings';
 import { useUserPlan } from '@/lib/subscription/hooks/useUserPlan';
 import { PlatformGuard, StyleGuard } from '@/lib/subscription/components/FeatureGuard';
 import { UpgradePrompt } from '@/lib/subscription/components/UpgradePrompt';
+import { useExtensionDetector } from '@/hooks/useExtensionDetector';
 import { Crown } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 interface PlatformPreviewProps {
   title: string;
@@ -23,8 +25,10 @@ export function PlatformPreview({ title, content }: PlatformPreviewProps) {
   const [finalContent, setFinalContent] = useState('');
   const [isPublishing, setIsPublishing] = useState(false);
   
-  // 添加订阅信息
+  // 添加订阅信息和插件检测
   const { hasFeature, checkFeatureAccess } = useUserPlan();
+  const { isInstalled, isChecking } = useExtensionDetector();
+  const router = useRouter();
 
   // 平台配置
   const platforms = [
@@ -162,103 +166,53 @@ export function PlatformPreview({ title, content }: PlatformPreviewProps) {
       return;
     }
 
+    // 如果插件未安装，引导用户安装
+    if (!isInstalled) {
+      router.push('/extension');
+      return;
+    }
+
     setIsPublishing(true);
 
     try {
       const contentToPublish = finalContent || content;
       const platformUrl = getPlatformUrl(selectedPlatform);
 
-      if (selectedPlatform === 'zsxq') {
-        // 知识星球：尝试调用Chrome插件的一键发布功能
-        if (typeof window !== 'undefined' && (window as any).chrome?.runtime) {
-          try {
-            // 发送消息给Chrome插件
-            (window as any).chrome.runtime.sendMessage({
-              action: 'oneClickPublish',
-              platform: 'zsxq',
-              title: title,
-              content: contentToPublish,
-              preset: appliedSettings
-            }, (response: any) => {
-              if (response?.success) {
-                // 插件调用成功，直接跳转
-              } else {
-                // 如果插件调用失败，直接打开页面
-                window.open(platformUrl, '_blank');
-              }
-            });
-          } catch (error) {
-            // 如果没有Chrome插件，直接打开页面
-            window.open(platformUrl, '_blank');
-          }
-        } else {
-          // 非Chrome环境，直接打开页面
-          window.open(platformUrl, '_blank');
-        }
-      } else if (selectedPlatform === 'wechat') {
-        // 微信公众号：尝试调用Chrome插件的一键发布功能
-        if (typeof window !== 'undefined' && (window as any).chrome?.runtime) {
-          try {
-            // 发送消息给Chrome插件
-            (window as any).chrome.runtime.sendMessage({
-              action: 'oneClickPublish',
-              platform: 'wechat',
-              title: title,
-              content: contentToPublish,
-              preset: appliedSettings
-            }, (response: any) => {
-              if (response?.success) {
-                // 插件调用成功，直接跳转
-              } else {
-                // 如果插件调用失败，直接打开页面
-                window.open(platformUrl, '_blank');
-              }
-            });
-          } catch (error) {
-            // 如果没有Chrome插件，直接打开页面
-            window.open(platformUrl, '_blank');
-          }
-        } else {
-          // 非Chrome环境，直接打开页面
-          window.open(platformUrl, '_blank');
-        }
-      } else {
-        // 其他平台：复制内容到剪贴板并打开编辑器
-        let contentToCopy = '';
+      // 准备要复制的内容
+      let contentToCopy = '';
 
-        // 添加标题
-        if (title) {
-          contentToCopy += `# ${title}\n\n`;
-        }
+      // 添加标题
+      if (title) {
+        contentToCopy += `# ${title}\n\n`;
+      }
 
-        // 添加内容（优先使用Markdown格式）
-        contentToCopy += contentToPublish;
+      // 添加内容（优先使用Markdown格式）
+      contentToCopy += contentToPublish;
 
-        // 添加发布预设的开头和结尾内容
-        if (appliedSettings) {
-          if (appliedSettings.headerContent) {
-            contentToCopy = appliedSettings.headerContent + '\n\n' + contentToCopy;
-          }
-          if (appliedSettings.footerContent) {
-            contentToCopy += '\n\n' + appliedSettings.footerContent;
-          }
+      // 添加发布预设的开头和结尾内容
+      if (appliedSettings) {
+        if (appliedSettings.headerContent) {
+          contentToCopy = appliedSettings.headerContent + '\n\n' + contentToCopy;
         }
+        if (appliedSettings.footerContent) {
+          contentToCopy += '\n\n' + appliedSettings.footerContent;
+        }
+      }
 
-        // 复制到剪贴板
-        try {
-          await navigator.clipboard.writeText(contentToCopy);
-          window.open(platformUrl, '_blank');
-        } catch (error) {
-          console.error('复制失败:', error);
-          window.open(platformUrl, '_blank');
-        }
+      // 复制到剪贴板并打开平台页面
+      try {
+        await navigator.clipboard.writeText(contentToCopy);
+        window.open(platformUrl, '_blank');
+      } catch (error) {
+        console.error('复制失败:', error);
+        window.open(platformUrl, '_blank');
       }
     } catch (error) {
       console.error('发布失败:', error);
     } finally {
       setIsPublishing(false);
     }
-  }, [selectedPlatform, title, content, finalContent, appliedSettings, platforms]);
+  }, [selectedPlatform, title, content, finalContent, appliedSettings, isInstalled, router]);
   return (
     <div className="flex flex-col h-full">
       {/* 预览控制栏 */}
@@ -383,24 +337,44 @@ export function PlatformPreview({ title, content }: PlatformPreviewProps) {
             )}
 
             {/* 去发布按钮 */}
-            <button
-              onClick={handlePublish}
-              disabled={isPublishing || !title.trim() || !content.trim()}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
-                isPublishing || !title.trim() || !content.trim()
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  : 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow-md'
-              }`}
-              title={`发布到${platforms.find(p => p.id === selectedPlatform)?.name}`}
-            >
-              {isPublishing ? (
+            {isChecking ? (
+              <button
+                disabled
+                className="flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium bg-gray-100 text-gray-400 cursor-not-allowed"
+              >
                 <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-              <span>{isPublishing ? '发布中...' : '去发布'}</span>
-              <ExternalLink className="h-3 w-3" />
-            </button>
+                <span>检测中...</span>
+              </button>
+            ) : !isInstalled ? (
+              <button
+                onClick={() => router.push('/extension')}
+                className="flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium bg-orange-100 hover:bg-orange-200 text-orange-800 border border-orange-300"
+                title="需要先安装插件才能发布"
+              >
+                <Chrome className="h-4 w-4" />
+                <span>安装插件</span>
+                <ExternalLink className="h-3 w-3" />
+              </button>
+            ) : (
+              <button
+                onClick={handlePublish}
+                disabled={isPublishing || !title.trim() || !content.trim()}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                  isPublishing || !title.trim() || !content.trim()
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow-md'
+                }`}
+                title={`复制内容并打开${platforms.find(p => p.id === selectedPlatform)?.name}`}
+              >
+                {isPublishing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
+                <span>{isPublishing ? '准备中...' : '复制并发布'}</span>
+                <ExternalLink className="h-3 w-3" />
+              </button>
+            )}
           </div>
         </div>
 

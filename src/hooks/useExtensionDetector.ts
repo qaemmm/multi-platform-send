@@ -62,54 +62,10 @@ export function useExtensionDetector() {
     return () => clearTimeout(delayedCheck);
   }, [checkExtension]);
 
-  // 向插件发送发布请求
-  const publishToExtension = useCallback(async (data: {
-    title: string;
-    content: string;
-    platform: 'wechat' | 'zhihu' | 'juejin' | 'zsxq';
-  }) => {
-    if (!isInstalled) {
-      throw new Error('插件未安装');
-    }
-
-    return new Promise((resolve, reject) => {
-      const requestId = `publish_${Date.now()}`;
-      
-      // 监听发布结果
-      const handleResponse = (event: MessageEvent) => {
-        if (event.data?.type === 'ZILIU_PUBLISH_RESPONSE' && event.data?.requestId === requestId) {
-          window.removeEventListener('message', handleResponse);
-          if (event.data.success) {
-            resolve(event.data.result);
-          } else {
-            reject(new Error(event.data.error || '发布失败'));
-          }
-        }
-      };
-
-      window.addEventListener('message', handleResponse);
-
-      // 发送发布请求
-      window.postMessage({
-        type: 'ZILIU_PUBLISH_REQUEST',
-        requestId,
-        data,
-        timestamp: Date.now()
-      }, '*');
-
-      // 设置超时
-      setTimeout(() => {
-        window.removeEventListener('message', handleResponse);
-        reject(new Error('发布超时'));
-      }, 30000);
-    });
-  }, [isInstalled]);
-
   return {
     isInstalled,
     isChecking,
     extensionInfo,
-    checkExtension,
-    publishToExtension
+    checkExtension
   };
 }
