@@ -182,6 +182,32 @@ class ApiService {
           method: 'PUT',
           body: settings
         });
+      },
+
+      plan: async () => {
+        return this.cachedRequest('/api/auth/user-plan');
+      }
+    };
+  }
+
+  /**
+   * 订阅相关API
+   */
+  get subscription() {
+    return {
+      getUserPlan: async () => {
+        return this.cachedRequest('/api/auth/user-plan');
+      },
+
+      getUsage: async () => {
+        return this.cachedRequest('/api/usage/images');
+      },
+
+      checkFeatureAccess: async (featureId) => {
+        return this.makeRequest('/api/subscription/check-feature', {
+          method: 'POST',
+          body: { featureId }
+        });
       }
     };
   }

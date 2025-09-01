@@ -163,6 +163,100 @@ class ZiliuPlatformManager {
     const platform = this.supportedPlatforms.get(platformId);
     return platform?.specialHandling?.copyOnly === true;
   }
+
+  /**
+   * 检查平台是否可用（权限控制）
+   */
+  async isPlatformAvailable(platformId) {
+    const platform = this.supportedPlatforms.get(platformId);
+    if (!platform) {
+      return { available: false, reason: '平台不存在' };
+    }
+
+    // 如果平台不需要订阅验证（如微信公众号），直接返回可用
+    if (!platform.requiredPlan || !platform.featureId) {
+      return { available: true };
+    }
+
+    // 检查订阅权限
+    if (window.ZiliuSubscriptionService) {
+      try {
+        // 确保订阅服务已初始化
+        if (window.ZiliuSubscriptionService.userPlan.isLoading) {
+          await window.ZiliuSubscriptionService.syncUserPlan();
+        }
+        
+        return window.ZiliuSubscriptionService.isPlatformAvailable(platformId);
+      } catch (error) {
+        console.warn('检查平台权限失败:', error);
+        return { available: false, reason: '权限检查失败' };
+      }
+    }
+
+    // 如果订阅服务不可用，对需要专业版的平台返回不可用
+    if (platform.requiredPlan === 'pro') {
+      return { 
+        available: false, 
+        reason: '此平台需要专业版权限'
+      };
+    }
+
+    return { available: true };
+  }
+
+  /**
+   * 显示平台权限状态（供应用调用）
+   */
+  async showPlatformStatus(platformId) {
+    const availability = await this.isPlatformAvailable(platformId);
+    const platform = this.supportedPlatforms.get(platformId);
+    
+    if (!availability.available && platform) {
+      // 显示平台锁定状态
+      if (window.ZiliuSubscriptionStatus) {
+        window.ZiliuSubscriptionStatus.showPlatformLocked(platform.displayName);
+      }
+      return false;
+    }
+    
+    return true;
+  }
+
+  /**
+   * 获取可用的平台列表（已过滤权限）
+   */
+  async getAvailablePlatforms() {
+    const availablePlatforms = [];
+    
+    for (const [id, platform] of this.supportedPlatforms) {
+      const availability = await this.isPlatformAvailable(id);
+      if (availability.available) {
+        availablePlatforms.push({ id, ...platform });
+      }
+    }
+    
+    return availablePlatforms;
+  }
+
+  /**
+   * 获取被权限限制的平台列表
+   */
+  async getRestrictedPlatforms() {
+    const restrictedPlatforms = [];
+    
+    for (const [id, platform] of this.supportedPlatforms) {
+      const availability = await this.isPlatformAvailable(id);
+      if (!availability.available) {
+        restrictedPlatforms.push({ 
+          id, 
+          ...platform, 
+          restriction: availability 
+        });
+      }
+    }
+    
+    return restrictedPlatforms;
+  }
 }
 
 // 全局平台管理器实例

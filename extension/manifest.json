@@ -35,6 +35,7 @@
         "core/event-bus.js",
         "core/config-service.js",
         "core/api-service.js",
+        "core/subscription-service.js",
         "core/utils-service.js",
         "core/content-service.js",
         "core/platform-detector.js",
@@ -46,6 +47,7 @@
         "plugins/platforms/wechat.js",
         "ui/panel.js",
         "ui/features.js",
+        "ui/subscription-status.js",
         "core/app.js",
         "main.js"
       ],
@@ -61,6 +63,7 @@
         "core/event-bus.js",
         "core/config-service.js",
         "core/api-service.js",
+        "core/subscription-service.js",
         "core/utils-service.js",
         "core/content-service.js",
         "core/platform-detector.js",
@@ -72,6 +75,7 @@
         "plugins/platforms/zhihu.js",
         "ui/panel.js",
         "ui/features.js",
+        "ui/subscription-status.js",
         "core/app.js",
         "main.js"
       ],
@@ -86,6 +90,7 @@
         "core/event-bus.js",
         "core/config-service.js",
         "core/api-service.js",
+        "core/subscription-service.js",
         "core/utils-service.js",
         "core/content-service.js",
         "core/platform-detector.js",
@@ -97,6 +102,7 @@
         "plugins/platforms/juejin.js",
         "ui/panel.js",
         "ui/features.js",
+        "ui/subscription-status.js",
         "core/app.js",
         "main.js"
       ],
@@ -112,6 +118,7 @@
         "core/event-bus.js",
         "core/config-service.js",
         "core/api-service.js",
+        "core/subscription-service.js",
         "core/utils-service.js",
         "core/content-service.js",
         "core/platform-detector.js",
@@ -123,6 +130,7 @@
         "plugins/platforms/zsxq.js",
         "ui/panel.js",
         "ui/features.js",
+        "ui/subscription-status.js",
         "core/app.js",
         "main.js"
       ],

@@ -35,6 +35,8 @@ window.ZiliuPluginConfig = {
       name: '知乎平台插件',
       displayName: '知乎',
       enabled: true,
+      requiredPlan: 'pro', // 需要专业版
+      featureId: 'zhihu-platform',
       urlPatterns: [
         'https://zhuanlan.zhihu.com/write*',
         'https://zhuanlan.zhihu.com/p/*/edit*'
@@ -72,6 +74,8 @@ window.ZiliuPluginConfig = {
       name: '掘金平台插件',
       displayName: '掘金',
       enabled: true,
+      requiredPlan: 'pro', // 需要专业版
+      featureId: 'juejin-platform',
       urlPatterns: [
         'https://juejin.cn/editor/*',
         'https://juejin.cn/post/*'
@@ -107,6 +111,8 @@ window.ZiliuPluginConfig = {
       name: '知识星球平台插件', 
       displayName: '知识星球',
       enabled: true,
+      requiredPlan: 'pro', // 需要专业版
+      featureId: 'zsxq-platform',
       urlPatterns: [
         'https://wx.zsxq.com/group/*',
         'https://wx.zsxq.com/article?groupId=*'

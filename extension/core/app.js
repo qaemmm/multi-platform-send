@@ -32,6 +32,9 @@ class ZiliuApp {
       // 2. 初始化核心服务
       await this.initCoreServices();
       
+      // 2.1. 初始化订阅服务
+      await this.initSubscriptionService();
+      
       // 3. 检测并加载当前平台插件
       await this.detectAndLoadPlatform();
       
@@ -96,6 +99,29 @@ class ZiliuApp {
   }
 
   /**
+   * 初始化订阅服务
+   */
+  async initSubscriptionService() {
+    try {
+      console.log('💎 初始化订阅服务...');
+      
+      // 确保订阅服务已加载
+      if (!window.ZiliuSubscriptionService) {
+        console.warn('⚠️ 订阅服务未找到，跳过初始化');
+        return;
+      }
+
+      // 初始化订阅服务
+      await window.ZiliuSubscriptionService.init();
+      
+      console.log('✅ 订阅服务初始化完成');
+    } catch (error) {
+      console.error('❌ 订阅服务初始化失败:', error);
+      // 不抛出错误，允许应用继续运行
+    }
+  }
+
+  /**
    * 检测并加载当前平台插件
    */
   async detectAndLoadPlatform() {
@@ -120,6 +146,15 @@ class ZiliuApp {
       this.currentPlatform = platformConfig;
       
       console.log('✅ 平台插件加载完成:', platformConfig.displayName);
+      
+      // 检查平台权限状态
+      const hasAccess = await this.checkPlatformPermissions(platformConfig);
+      
+      // 如果没有权限，不加载预设和其他功能
+      if (!hasAccess) {
+        console.log('🔒 平台权限不足，跳过功能初始化');
+        return;
+      }
       
       // 重新加载对应平台的预设
       await this.reloadPresetsForPlatform();
@@ -239,6 +274,37 @@ class ZiliuApp {
     }
 
     return DynamicPlatformPlugin;
+  }
+
+  /**
+   * 检查平台权限状态
+   */
+  async checkPlatformPermissions(platformConfig) {
+    try {
+      console.log('🔐 检查平台权限状态...');
+      
+      // 检查平台是否需要权限验证
+      if (!platformConfig.requiredPlan) {
+        console.log('✅ 当前平台无权限限制');
+        return true;
+      }
+
+      // 使用平台管理器检查权限
+      if (window.ZiliuPlatformManager) {
+        const hasAccess = await window.ZiliuPlatformManager.showPlatformStatus(platformConfig.id);
+        if (hasAccess) {
+          console.log('✅ 平台权限验证通过');
+        } else {
+          console.log('🔒 平台权限验证失败，已显示升级提示');
+        }
+        return hasAccess;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('❌ 检查平台权限失败:', error);
+      return true; // 出错时不阻止功能使用
+    }
   }
 
   /**
