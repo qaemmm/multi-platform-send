@@ -11,7 +11,8 @@ import {
   Save,
   Loader2,
   CheckCircle2,
-  AlertTriangle
+  AlertTriangle,
+  Info
 } from 'lucide-react';
 import Link from 'next/link';
 import { countWords, calculateReadingTime } from '@/lib/utils';
@@ -35,11 +36,11 @@ export function EditorLayout({
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [showFeishuImport, setShowFeishuImport] = useState(false);
-  const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' }>({
+  const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' | 'info' }>({
     visible: false, message: '', type: 'success'
   });
 
-  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToast({ visible: true, message, type });
     setTimeout(() => {
       setToast((prev) => ({ ...prev, visible: false }));
@@ -99,11 +100,15 @@ export function EditorLayout({
           className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-lg shadow-lg border flex items-center gap-2 text-sm ${
             toast.type === 'success'
               ? 'bg-green-50 border-green-200 text-green-700'
+              : toast.type === 'info'
+              ? 'bg-blue-50 border-blue-200 text-blue-700'
               : 'bg-red-50 border-red-200 text-red-700'
           }`}
         >
           {toast.type === 'success' ? (
             <CheckCircle2 className="h-4 w-4" />
+          ) : toast.type === 'info' ? (
+            <Info className="h-4 w-4" />
           ) : (
             <AlertTriangle className="h-4 w-4" />
           )}
@@ -200,6 +205,7 @@ export function EditorLayout({
         open={showFeishuImport}
         onOpenChange={setShowFeishuImport}
         onImport={handleFeishuImport}
+        onShowToast={showToast}
       />
     </div>
   );

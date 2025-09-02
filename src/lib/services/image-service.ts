@@ -327,52 +327,82 @@ export async function uploadImageFromUrl(
 }
 
 /**
- * 下载图片
+ * 下载图片（带超时和重试机制）
  */
 async function downloadImage(url: string): Promise<Blob | null> {
-  try {
-    // 确保URL是完整的
-    let fullUrl = url;
-    if (url.startsWith('//')) {
-      fullUrl = 'https:' + url;
-    } else if (!url.startsWith('http')) {
-      fullUrl = 'https://' + url;
+  const maxRetries = 2;
+  const timeoutMs = 10000; // 10秒超时
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      // 确保URL是完整的
+      let fullUrl = url;
+      if (url.startsWith('//')) {
+        fullUrl = 'https:' + url;
+      } else if (!url.startsWith('http')) {
+        fullUrl = 'https://' + url;
+      }
+
+      // 为飞书图片添加特殊处理
+      const isFeiShuImage = fullUrl.includes('feishu.cn') || fullUrl.includes('larksuite.com');
+
+      const headers: Record<string, string> = {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache',
+      };
+
+      // 如果是飞书图片，添加更多头信息
+      if (isFeiShuImage) {
+        headers['Referer'] = 'https://feishu.cn/';
+        headers['Origin'] = 'https://feishu.cn';
+        headers['Sec-Fetch-Dest'] = 'image';
+        headers['Sec-Fetch-Mode'] = 'no-cors';
+        headers['Sec-Fetch-Site'] = 'same-site';
+      }
+
+      // 创建带超时的 AbortController
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+      try {
+        const response = await fetch(fullUrl, { 
+          headers,
+          signal: controller.signal 
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.startsWith('image/')) {
+          throw new Error('不是有效的图片类型');
+        }
+
+        return await response.blob();
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        throw fetchError;
+      }
+    } catch (error) {
+      const isLastAttempt = attempt === maxRetries;
+      const errorMessage = error instanceof Error ? error.message : '未知错误';
+      
+      if (isLastAttempt) {
+        console.error(`下载图片失败 (所有 ${maxRetries + 1} 次尝试都失败):`, url, errorMessage);
+        return null;
+      } else {
+        console.warn(`下载图片失败 (第 ${attempt + 1} 次尝试):`, url, errorMessage, '- 将重试');
+        // 短暂延迟后重试
+        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+      }
     }
-
-    // 为飞书图片添加特殊处理
-    const isFeiShuImage = fullUrl.includes('feishu.cn') || fullUrl.includes('larksuite.com');
-
-    const headers: Record<string, string> = {
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Accept': 'image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-      'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-      'Cache-Control': 'no-cache',
-      'Pragma': 'no-cache',
-    };
-
-    // 如果是飞书图片，添加更多头信息
-    if (isFeiShuImage) {
-      headers['Referer'] = 'https://feishu.cn/';
-      headers['Origin'] = 'https://feishu.cn';
-      headers['Sec-Fetch-Dest'] = 'image';
-      headers['Sec-Fetch-Mode'] = 'no-cors';
-      headers['Sec-Fetch-Site'] = 'same-site';
-    }
-
-    const response = await fetch(fullUrl, { headers });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const contentType = response.headers.get('content-type');
-    if (!contentType || !contentType.startsWith('image/')) {
-      throw new Error('不是有效的图片类型');
-    }
-
-    return await response.blob();
-  } catch (error) {
-    console.error('下载图片失败:', url, error);
-    return null;
   }
+  
+  return null;
 }
