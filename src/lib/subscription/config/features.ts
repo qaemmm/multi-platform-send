@@ -31,6 +31,13 @@ export const FEATURES: Record<string, FeatureConfig> = {
     plans: ['pro']
   },
 
+  'wechat-platform': {
+    id: 'wechat-platform',
+    name: '微信公众号',
+    description: '发布到微信公众号',
+    plans: ['free', 'pro']
+  },
+
   'zhihu-platform': {
     id: 'zhihu-platform',
     name: '知乎平台',
@@ -76,7 +83,7 @@ export const FEATURES: Record<string, FeatureConfig> = {
     plans: ['free', 'pro'],
     limits: {
       free: 20, // 免费版20张/月
-      pro: 100, // 专业版100张/月
+      pro: 500, // 专业版500张/月
     }
   }
 };
@@ -125,7 +132,7 @@ export const UPGRADE_PROMPTS: Record<string, UpgradePromptConfig> = {
 
   'cloud-images-limit': {
     title: '图片存储已达上限',
-    description: '免费版每月可使用20张图片，升级专业版获得100张/月额度',
+    description: '免费版每月可使用20张图片，升级专业版获得500张/月额度',
     features: ['cloud-images'],
     cta: '升级获得更多图片额度',
     style: 'inline'

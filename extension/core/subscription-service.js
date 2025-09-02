@@ -124,7 +124,7 @@ class SubscriptionService {
       },
       'cloud-images-limit': {
         title: '图片存储已达上限',
-        description: '免费版每月可使用20张图片，升级专业版获得100张/月额度',
+        description: '免费版每月可使用20张图片，升级专业版获得500张/月额度',
         features: ['cloud-images'],
         cta: '升级获得更多图片额度',
         style: 'inline'

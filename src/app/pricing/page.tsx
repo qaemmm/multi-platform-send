@@ -26,13 +26,13 @@ const featureList = {
     { name: '多平台发布', description: '知乎、掘金、知识星球' },
     { name: '专业样式模板', description: '技术风格、简约风格' },
     { name: '发布预设', description: '保存常用配置' },
-    { name: '云端图片存储', description: '100张/月' },
+    { name: '云端图片存储', description: '500张/月' },
     { name: '优先客服支持', included: true },
   ]
 };
 
 export default function PricingPage() {
-  const { data: session, status } = useSession();
+  const { data: session } = useSession();
   const [showRedeemDialog, setShowRedeemDialog] = useState(false);
   const [showWechatGuide, setShowWechatGuide] = useState(false);
 

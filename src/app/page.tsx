@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useSession } from "next-auth/react";
 import { CustomerSupportButton } from "@/components/ui/customer-support-button";
+import { StructuredData } from "@/components/seo/structured-data";
 
 export default function Home() {
   const { data: session, status } = useSession();
@@ -193,6 +194,9 @@ export default function Home() {
       
       {/* 全局浮动客服按钮 */}
       <CustomerSupportButton />
+      
+      {/* 结构化数据 */}
+      <StructuredData type="WebApplication" />
     </div>
   );
 }

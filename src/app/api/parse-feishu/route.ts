@@ -2,20 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import TurndownService from 'turndown';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import { v4 as uuidv4 } from 'uuid';
+import { checkImageQuota, uploadImageFromUrl } from '@/lib/services/image-service';
 
-// 配置 Cloudflare R2 客户端
-const r2Client = new S3Client({
-  region: 'auto',
-  endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-  credentials: {
-    accessKeyId: process.env.R2_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
-  },
-  forcePathStyle: true,
-  tls: true,
-});
 
 /**
  * 统计HTML中的图片数量（需要上传的）
@@ -104,32 +92,27 @@ async function processImagesInHtml(html: string, session: any): Promise<{
   processedHtml: string;
   warning?: string;
 }> {
-  // 检查环境变量
-  if (!process.env.R2_ACCOUNT_ID || !process.env.R2_ACCESS_KEY_ID || !process.env.R2_SECRET_ACCESS_KEY || !process.env.R2_BUCKET_NAME) {
-    console.warn('R2 配置缺失，跳过图片上传处理');
-    return { processedHtml: html };
-  }
-
   // 检查用户图片权限
   let hasImageQuota = true;
   let quotaWarning = '';
   
-  try {
-    // 调用统一的上传API来检查权限（只是检查，不真正上传）
-    const testResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/usage/images`);
-    const testData = await testResponse.json();
-    
-    if (testData.success) {
-      // 这里可以根据配额判断是否还能上传，但暂时简化为都允许尝试
-      hasImageQuota = true;
-    } else {
-      hasImageQuota = false;
-      quotaWarning = '当月图片额度不足，飞书图片将保留原始链接';
-    }
-  } catch (error) {
-    // 如果检查失败，降级为保留原图
+  if (!session?.user?.email) {
     hasImageQuota = false;
-    quotaWarning = '无法检查图片额度，飞书图片将保留原始链接';
+    quotaWarning = '用户未登录，飞书图片将保留原始链接';
+  } else {
+    try {
+      // 使用公共服务检查用户配额
+      const quotaCheck = await checkImageQuota(session.user.email);
+      hasImageQuota = quotaCheck.hasQuota;
+      
+      if (!hasImageQuota) {
+        quotaWarning = quotaCheck.reason || '当月图片额度不足，飞书图片将保留原始链接';
+      }
+    } catch (error) {
+      console.error('检查图片配额失败:', error);
+      // 如果检查失败，为了用户体验，先允许尝试上传，让具体上传时再处理错误
+      hasImageQuota = true;
+    }
   }
 
   // 使用正则表达式匹配所有img标签，并提取src属性
@@ -163,43 +146,22 @@ async function processImagesInHtml(html: string, session: any): Promise<{
         continue;
       }
 
-      const isFeiShuImage = originalSrc.includes('feishu.cn') || originalSrc.includes('larksuite.com');
-
-      if (isFeiShuImage) {
-        // 对于飞书图片，尝试上传，失败则降级
-        console.log('处理飞书图片:', originalSrc);
-
-        try {
-          // 直接调用现有的upload API
-          const uploadResponse = await uploadViaAPI(originalSrc, session);
-          if (uploadResponse?.url) {
-            processedHtml = processedHtml.replace(fullImgTag, fullImgTag.replace(originalSrc, uploadResponse.url));
-            console.log('飞书图片上传成功:', originalSrc, '->', uploadResponse.url);
-            uploadedCount++;
-          } else {
-            console.warn('飞书图片上传失败，保留原始URL:', originalSrc);
-            failedCount++;
-          }
-        } catch (error) {
-          console.warn('飞书图片处理失败，保留原始URL:', originalSrc, error);
+      // 使用公共服务上传图片
+      try {
+        console.log('处理图片:', originalSrc);
+        const uploadResult = await uploadImageFromUrl(originalSrc, session.user.email);
+        
+        if (uploadResult.success && uploadResult.url) {
+          processedHtml = processedHtml.replace(fullImgTag, fullImgTag.replace(originalSrc, uploadResult.url));
+          console.log('图片上传成功:', originalSrc, '->', uploadResult.url);
+          uploadedCount++;
+        } else {
+          console.warn('图片上传失败，保留原始URL:', originalSrc, uploadResult.error);
           failedCount++;
         }
-      } else {
-        // 处理非飞书图片
-        try {
-          const uploadResponse = await uploadViaAPI(originalSrc, session);
-          if (uploadResponse?.url) {
-            processedHtml = processedHtml.replace(fullImgTag, fullImgTag.replace(originalSrc, uploadResponse.url));
-            console.log('图片上传成功:', originalSrc, '->', uploadResponse.url);
-            uploadedCount++;
-          } else {
-            console.warn('图片上传失败:', originalSrc);
-            failedCount++;
-          }
-        } catch (error) {
-          console.error('处理图片失败:', originalSrc, error);
-          failedCount++;
-        }
+      } catch (error) {
+        console.error('处理图片失败:', originalSrc, error);
+        failedCount++;
       }
     } catch (error) {
       console.error('处理图片失败:', originalSrc, error);
@@ -220,127 +182,6 @@ async function processImagesInHtml(html: string, session: any): Promise<{
     warning: warning || undefined 
   };
 }
-
-/**
- * 通过统一的上传API上传图片（复用现有逻辑）
- */
-async function uploadViaAPI(imageUrl: string, session: any): Promise<{ url: string } | null> {
-  try {
-    // 下载图片
-    const imageBlob = await downloadImage(imageUrl);
-    if (!imageBlob) {
-      return null;
-    }
-
-    // 创建FormData并调用现有的上传API
-    const formData = new FormData();
-    const filename = imageUrl.split('/').pop() || 'image.jpg';
-    formData.append('file', imageBlob, filename);
-
-    // 调用现有的上传API
-    const response = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/upload`, {
-      method: 'POST',
-      headers: {
-        'Cookie': `next-auth.session-token=${session.sessionToken || ''}` // 传递session
-      },
-      body: formData,
-    });
-
-    const result = await response.json();
-    
-    if (result.success && result.data?.url) {
-      return { url: result.data.url };
-    }
-
-    return null;
-  } catch (error) {
-    console.error('通过API上传图片失败:', error);
-    return null;
-  }
-}
-
-// 下载图片
-async function downloadImage(url: string): Promise<Blob | null> {
-  try {
-    // 确保URL是完整的
-    let fullUrl = url;
-    if (url.startsWith('//')) {
-      fullUrl = 'https:' + url;
-    } else if (!url.startsWith('http')) {
-      fullUrl = 'https://' + url;
-    }
-
-    // 为飞书图片添加特殊处理
-    const isFeiShuImage = fullUrl.includes('feishu.cn') || fullUrl.includes('larksuite.com');
-
-    const headers: Record<string, string> = {
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Accept': 'image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-      'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-      'Cache-Control': 'no-cache',
-      'Pragma': 'no-cache',
-    };
-
-    // 如果是飞书图片，添加更多头信息
-    if (isFeiShuImage) {
-      headers['Referer'] = 'https://feishu.cn/';
-      headers['Origin'] = 'https://feishu.cn';
-      headers['Sec-Fetch-Dest'] = 'image';
-      headers['Sec-Fetch-Mode'] = 'no-cors';
-      headers['Sec-Fetch-Site'] = 'same-site';
-    }
-
-    const response = await fetch(fullUrl, {
-      headers,
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const contentType = response.headers.get('content-type');
-    if (!contentType || !contentType.startsWith('image/')) {
-      throw new Error('不是有效的图片类型');
-    }
-
-    return await response.blob();
-  } catch (error) {
-    console.error('下载图片失败:', url, error);
-    return null;
-  }
-}
-
-
-// 获取文件扩展名
-function getFileExtension(mimeType: string, fileName: string): string {
-  // 首先尝试从MIME类型获取
-  const mimeToExt: { [key: string]: string } = {
-    'image/jpeg': 'jpg',
-    'image/jpg': 'jpg',
-    'image/png': 'png',
-    'image/gif': 'gif',
-    'image/webp': 'webp',
-    'image/svg+xml': 'svg'
-  };
-
-  if (mimeToExt[mimeType]) {
-    return mimeToExt[mimeType];
-  }
-
-  // 从文件名获取扩展名
-  const parts = fileName.split('.');
-  if (parts.length > 1) {
-    return parts[parts.length - 1].toLowerCase();
-  }
-
-  // 默认返回jpg
-  return 'jpg';
-}
-
-
-
-
-
 
 // 使用 turndown 库的转换函数，针对飞书特殊结构进行优化
 function convertHtmlToMarkdownWithTurndown(html: string): string {
