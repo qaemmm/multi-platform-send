@@ -371,7 +371,7 @@ export function PlatformPreview({ title, content }: PlatformPreviewProps) {
                 ) : (
                   <Copy className="h-4 w-4" />
                 )}
-                <span>{isPublishing ? '准备中...' : '复制并发布'}</span>
+                <span>{isPublishing ? '准备中...' : '去平台发布'}</span>
                 <ExternalLink className="h-3 w-3" />
               </button>
             )}
