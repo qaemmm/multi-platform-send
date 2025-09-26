@@ -35,7 +35,7 @@ window.ZiliuPluginConfig = {
       name: '知乎平台插件',
       displayName: '知乎',
       enabled: true,
-      requiredPlan: 'pro', // 需要专业版
+      // requiredPlan: 'pro',  // 暂时开放给免费用户测试
       featureId: 'zhihu-platform',
       urlPatterns: [
         'https://zhuanlan.zhihu.com/write*',
@@ -74,7 +74,7 @@ window.ZiliuPluginConfig = {
       name: '掘金平台插件',
       displayName: '掘金',
       enabled: true,
-      requiredPlan: 'pro', // 需要专业版
+      // requiredPlan: 'pro',  // 暂时开放给免费用户测试
       featureId: 'juejin-platform',
       urlPatterns: [
         'https://juejin.cn/editor/*',
@@ -111,7 +111,7 @@ window.ZiliuPluginConfig = {
       name: '知识星球平台插件',
       displayName: '知识星球',
       enabled: true,
-      requiredPlan: 'pro', // 需要专业版
+      // requiredPlan: 'pro',  // 暂时开放给免费用户测试
       featureId: 'zsxq-platform',
       urlPatterns: [
         'https://wx.zsxq.com/group/*',
@@ -148,7 +148,7 @@ window.ZiliuPluginConfig = {
       name: '小红书平台插件',
       displayName: '小红书',
       enabled: true,
-      requiredPlan: 'pro',
+      // requiredPlan: 'pro',  // 暂时开放给免费用户测试
       featureId: 'xiaohongshu-platform',
       urlPatterns: [
         'https://creator.xiaohongshu.com/publish/publish*'
@@ -183,7 +183,7 @@ window.ZiliuPluginConfig = {
       name: 'CSDN平台插件',
       displayName: 'CSDN',
       enabled: true,
-      requiredPlan: 'pro',
+      // requiredPlan: 'pro',  // 本地放开会员校验，确保 CSDN 立即可用
       featureId: 'csdn-platform',
       urlPatterns: [
         'https://mp.csdn.net/mp_blog/creation/editor*'

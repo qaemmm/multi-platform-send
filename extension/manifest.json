@@ -15,6 +15,8 @@
     "http://mp.weixin.qq.com/*",
     "https://zhuanlan.zhihu.com/*",
     "https://juejin.cn/*",
+    "https://mp.csdn.net/*",
+    "https://creator.xiaohongshu.com/*",
     "https://wx.zsxq.com/*",
     "https://www.ziliu.online/*",
     "https://ziliu.online/*",
@@ -128,6 +130,62 @@
         "plugins/config.js",
         "plugins/base-platform.js",
         "plugins/platforms/zsxq.js",
+        "ui/panel.js",
+        "ui/features.js",
+        "ui/subscription-status.js",
+        "core/app.js",
+        "main.js"
+      ],
+      "run_at": "document_end",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://mp.csdn.net/mp_blog/creation/editor*"
+      ],
+      "js": [
+        "core/constants.js",
+        "core/event-bus.js",
+        "core/config-service.js",
+        "core/api-service.js",
+        "core/subscription-service.js",
+        "core/utils-service.js",
+        "core/content-service.js",
+        "core/platform-detector.js",
+        "core/platform-manager.js",
+        "core/platform-registry.js",
+        "core/plugin-manager.js",
+        "plugins/config.js",
+        "plugins/base-platform.js",
+        "plugins/platforms/csdn.js",
+        "ui/panel.js",
+        "ui/features.js",
+        "ui/subscription-status.js",
+        "core/app.js",
+        "main.js"
+      ],
+      "run_at": "document_end",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://creator.xiaohongshu.com/publish/publish*"
+      ],
+      "js": [
+        "core/constants.js",
+        "core/event-bus.js",
+        "core/config-service.js",
+        "core/api-service.js",
+        "core/subscription-service.js",
+        "core/utils-service.js",
+        "core/content-service.js",
+        "core/platform-detector.js",
+        "core/platform-manager.js",
+        "core/platform-registry.js",
+        "core/plugin-manager.js",
+        "plugins/config.js",
+        "plugins/base-platform.js",
+        "plugins/platforms/xiaohongshu.js",
         "ui/panel.js",
         "ui/features.js",
         "ui/subscription-status.js",

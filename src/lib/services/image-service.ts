@@ -48,7 +48,7 @@ export interface ImageUploadResult {
  * 验证图片文件
  */
 async function validateImageFile(
-  file: File | Blob, 
+  file: File | Blob,
   userEmail: string
 ): Promise<{ valid: boolean; error?: string }> {
   // 检查文件大小
@@ -65,23 +65,23 @@ async function validateImageFile(
   const userPlan = user[0].plan || 'free';
   const planExpiredAt = user[0].planExpiredAt;
   const isPro = userPlan === 'pro' && (!planExpiredAt || new Date(planExpiredAt) > new Date());
-  
+
   // 检查文件大小限制
   const sizeLimit = isPro ? IMAGE_SIZE_LIMITS.pro : IMAGE_SIZE_LIMITS.free;
   if (file.size > sizeLimit) {
     const limitMB = Math.round(sizeLimit / (1024 * 1024));
     const fileSizeMB = Math.round(file.size / (1024 * 1024) * 100) / 100;
-    return { 
-      valid: false, 
-      error: `文件大小超过限制（${fileSizeMB}MB > ${limitMB}MB）${isPro ? '' : '，升级专业版可上传更大文件'}` 
+    return {
+      valid: false,
+      error: `文件大小超过限制（${fileSizeMB}MB > ${limitMB}MB）${isPro ? '' : '，升级专业版可上传更大文件'}`
     };
   }
 
   // 检查文件类型
   if (file.type && !ALLOWED_IMAGE_TYPES.includes(file.type)) {
-    return { 
-      valid: false, 
-      error: '不支持的文件格式，仅支持 JPEG、PNG、GIF、WebP' 
+    return {
+      valid: false,
+      error: '不支持的文件格式，仅支持 JPEG、PNG、GIF、WebP'
     };
   }
 
@@ -129,7 +129,7 @@ export async function checkImageQuota(userEmail: string): Promise<ImageQuotaResu
       .limit(1);
 
     const usedCount = usageStats.length > 0 ? usageStats[0].usedCount : 0;
-    
+
     if (usedCount >= quota) {
       return {
         hasQuota: false,
@@ -140,10 +140,10 @@ export async function checkImageQuota(userEmail: string): Promise<ImageQuotaResu
       };
     }
 
-    return { 
-      hasQuota: true, 
-      usedCount, 
-      totalQuota: quota 
+    return {
+      hasQuota: true,
+      usedCount,
+      totalQuota: quota
     };
 
   } catch (error) {
@@ -203,14 +203,14 @@ export async function updateImageUsageStats(userEmail: string): Promise<void> {
  * 上传图片到R2存储
  */
 export async function uploadImageToR2(
-  file: File | Blob, 
-  fileName: string, 
+  file: File | Blob,
+  fileName: string,
   userEmail: string
 ): Promise<ImageUploadResult> {
   try {
     // 检查环境变量
-    if (!process.env.R2_ACCOUNT_ID || !process.env.R2_ACCESS_KEY_ID || 
-        !process.env.R2_SECRET_ACCESS_KEY || !process.env.R2_BUCKET_NAME) {
+    if (!process.env.R2_ACCOUNT_ID || !process.env.R2_ACCESS_KEY_ID ||
+      !process.env.R2_SECRET_ACCESS_KEY || !process.env.R2_BUCKET_NAME) {
       return { success: false, error: '服务器配置错误' };
     }
 
@@ -223,9 +223,9 @@ export async function uploadImageToR2(
     // 检查用户配额
     const quotaCheck = await checkImageQuota(userEmail);
     if (!quotaCheck.hasQuota) {
-      return { 
-        success: false, 
-        error: quotaCheck.reason || '配额不足' 
+      return {
+        success: false,
+        error: quotaCheck.reason || '配额不足'
       };
     }
 
@@ -258,9 +258,10 @@ export async function uploadImageToR2(
     await updateImageUsageStats(userEmail);
 
     // 构建公开访问 URL
-    const publicUrl = process.env.R2_PUBLIC_URL 
+    // 构建公开访问 URL：优先使用配置的公共域名；否则使用 r2.dev 公共访问域名
+    const publicUrl = process.env.R2_PUBLIC_URL
       ? `${process.env.R2_PUBLIC_URL}/${filePath}`
-      : `https://${process.env.R2_BUCKET_NAME}.${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${filePath}`;
+      : `https://${process.env.R2_BUCKET_NAME}.${process.env.R2_ACCOUNT_ID}.r2.dev/${filePath}`;
 
     return {
       success: true,
@@ -284,7 +285,7 @@ export async function uploadImageToR2(
  * 从URL下载图片并上传到R2
  */
 export async function uploadImageFromUrl(
-  imageUrl: string, 
+  imageUrl: string,
   userEmail: string
 ): Promise<ImageUploadResult> {
   try {
@@ -299,16 +300,16 @@ export async function uploadImageFromUrl(
     const lastPart = urlParts[urlParts.length - 1] || 'image.jpg';
     // 移除查询参数（?之后的部分）
     const cleanFileName = lastPart.split('?')[0] || 'image.jpg';
-    
+
     // 对于飞书等特殊情况，如果文件名还是很复杂，简化为通用名称
     let finalFileName = cleanFileName;
-    
+
     // 如果文件名过长或包含特殊字符，使用简化名称
     if (cleanFileName.length > 50 || /[^\w\-.]/.test(cleanFileName)) {
       const extension = cleanFileName.includes('.') ? cleanFileName.split('.').pop() : 'jpg';
       finalFileName = `feishu-image.${extension}`;
     }
-    
+
     // 确保有文件扩展名
     if (!finalFileName.includes('.')) {
       finalFileName += '.jpg';
@@ -332,7 +333,7 @@ export async function uploadImageFromUrl(
 async function downloadImage(url: string): Promise<Blob | null> {
   const maxRetries = 2;
   const timeoutMs = 10000; // 10秒超时
-  
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       // 确保URL是完整的
@@ -368,9 +369,9 @@ async function downloadImage(url: string): Promise<Blob | null> {
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
       try {
-        const response = await fetch(fullUrl, { 
+        const response = await fetch(fullUrl, {
           headers,
-          signal: controller.signal 
+          signal: controller.signal
         });
 
         clearTimeout(timeoutId);
@@ -392,7 +393,7 @@ async function downloadImage(url: string): Promise<Blob | null> {
     } catch (error) {
       const isLastAttempt = attempt === maxRetries;
       const errorMessage = error instanceof Error ? error.message : '未知错误';
-      
+
       if (isLastAttempt) {
         console.error(`下载图片失败 (所有 ${maxRetries + 1} 次尝试都失败):`, url, errorMessage);
         return null;
@@ -403,6 +404,6 @@ async function downloadImage(url: string): Promise<Blob | null> {
       }
     }
   }
-  
+
   return null;
 }

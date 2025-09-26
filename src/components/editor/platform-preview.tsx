@@ -24,7 +24,7 @@ export function PlatformPreview({ title, content }: PlatformPreviewProps) {
   const [appliedSettings, setAppliedSettings] = useState<any>(null);
   const [finalContent, setFinalContent] = useState('');
   const [isPublishing, setIsPublishing] = useState(false);
-  
+
   // 添加订阅信息和插件检测
   const { hasFeature, checkFeatureAccess } = useUserPlan();
   const { isInstalled, isChecking, resetDetection } = useExtensionDetector();
@@ -59,6 +59,20 @@ export function PlatformPreview({ title, content }: PlatformPreviewProps) {
       icon: '🌟',
       color: 'bg-yellow-500',
       description: '知识星球文章和主题'
+    },
+    {
+      id: 'csdn' as Platform,
+      name: 'CSDN',
+      icon: '🅲',
+      color: 'bg-red-500',
+      description: 'CSDN 博客文章'
+    },
+    {
+      id: 'xiaohongshu' as Platform,
+      name: '小红书',
+      icon: '🍓',
+      color: 'bg-rose-500',
+      description: '小红书图文笔记'
     }
   ];
 
@@ -155,6 +169,10 @@ export function PlatformPreview({ title, content }: PlatformPreviewProps) {
         return 'https://juejin.cn/editor/drafts/new?v=2';
       case 'zsxq':
         return 'https://wx.zsxq.com/';
+      case 'csdn':
+        return 'https://mp.csdn.net/mp_blog/creation/editor';
+      case 'xiaohongshu':
+        return 'https://creator.xiaohongshu.com/publish/publish?from=tab_switch';
       default:
         return '';
     }
@@ -244,7 +262,7 @@ export function PlatformPreview({ title, content }: PlatformPreviewProps) {
               const platformFeatureId = `${platform.id}-platform`;
               const hasAccess = hasFeature(platformFeatureId);
               const accessResult = checkFeatureAccess(platformFeatureId);
-              
+
               return (
                 <div key={platform.id} className="relative">
                   <button
@@ -255,13 +273,12 @@ export function PlatformPreview({ title, content }: PlatformPreviewProps) {
                         alert(accessResult.reason || '此平台需要专业版权限');
                       }
                     }}
-                    className={`px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 flex items-center space-x-2 ${
-                      selectedPlatform === platform.id
-                        ? 'bg-white text-gray-900 shadow-sm'
-                        : hasAccess 
-                          ? 'text-gray-600 hover:text-gray-900'
-                          : 'text-gray-400 cursor-not-allowed opacity-60'
-                    }`}
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 flex items-center space-x-2 ${selectedPlatform === platform.id
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : hasAccess
+                        ? 'text-gray-600 hover:text-gray-900'
+                        : 'text-gray-400 cursor-not-allowed opacity-60'
+                      }`}
                     disabled={!hasAccess}
                     title={!hasAccess ? accessResult.reason : platform.description}
                   >
@@ -359,11 +376,10 @@ export function PlatformPreview({ title, content }: PlatformPreviewProps) {
               <button
                 onClick={handlePublish}
                 disabled={isPublishing || !title.trim() || !content.trim()}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
-                  isPublishing || !title.trim() || !content.trim()
-                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                    : 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow-md'
-                }`}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${isPublishing || !title.trim() || !content.trim()
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow-md'
+                  }`}
                 title={`复制内容并打开${platforms.find(p => p.id === selectedPlatform)?.name}`}
               >
                 {isPublishing ? (
@@ -422,6 +438,8 @@ export function PlatformPreview({ title, content }: PlatformPreviewProps) {
               {selectedPlatform === 'wechat' && <WechatPreview title={title} content={previewHtml} />}
               {selectedPlatform === 'zhihu' && <ZhihuPreview title={title} content={previewHtml} />}
               {selectedPlatform === 'juejin' && <JuejinPreview title={title} content={previewHtml} />}
+              {selectedPlatform === 'csdn' && <CsdnPreview title={title} content={previewHtml} />}
+              {selectedPlatform === 'xiaohongshu' && <XiaohongshuPreview title={title} content={previewHtml} />}
               {selectedPlatform === 'zsxq' && <ZsxqPreview title={title} content={previewHtml} />}
             </div>
 
@@ -482,10 +500,10 @@ function WechatPreview({ title, content }: { title: string; content: string }) {
                   <div className="w-1 h-6 bg-black rounded-full"></div>
                 </div>
                 <svg className="w-4 h-4 text-black" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M2.166 4.999c5.208-5.208 13.651-5.208 18.859 0a.833.833 0 1 1-1.178 1.178c-4.375-4.375-11.471-4.375-15.846 0a.833.833 0 0 1-1.178-1.178z"/>
-                  <path d="M5.01 7.844c3.125-3.125 8.195-3.125 11.32 0a.833.833 0 1 1-1.178 1.178c-2.292-2.292-6.014-2.292-8.306 0a.833.833 0 0 1-1.178-1.178z"/>
-                  <path d="M7.854 10.688c1.042-1.042 2.734-1.042 3.776 0a.833.833 0 1 1-1.178 1.178.833.833 0 0 0-1.178 0 .833.833 0 0 1-1.178-1.178z"/>
-                  <circle cx="10" cy="15" r="1.5"/>
+                  <path d="M2.166 4.999c5.208-5.208 13.651-5.208 18.859 0a.833.833 0 1 1-1.178 1.178c-4.375-4.375-11.471-4.375-15.846 0a.833.833 0 0 1-1.178-1.178z" />
+                  <path d="M5.01 7.844c3.125-3.125 8.195-3.125 11.32 0a.833.833 0 1 1-1.178 1.178c-2.292-2.292-6.014-2.292-8.306 0a.833.833 0 0 1-1.178-1.178z" />
+                  <path d="M7.854 10.688c1.042-1.042 2.734-1.042 3.776 0a.833.833 0 1 1-1.178 1.178.833.833 0 0 0-1.178 0 .833.833 0 0 1-1.178-1.178z" />
+                  <circle cx="10" cy="15" r="1.5" />
                 </svg>
                 <div className="flex items-center">
                   <div className="w-6 h-3 border border-black rounded-sm relative">
@@ -650,6 +668,72 @@ function JuejinPreview({ title, content }: { title: string; content: string }) {
 }
 
 
+// CSDN 预览
+function CsdnPreview({ title, content }: { title: string; content: string }) {
+  return (
+    <div className="p-6 bg-gray-50 min-h-full">
+      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        {/* CSDN 顶部品牌栏 */}
+        <div className="bg-red-600 text-white px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-white/10 rounded flex items-center justify-center font-bold">C</div>
+            <div className="font-semibold tracking-wide">CSDN · 技术社区</div>
+          </div>
+          <div className="text-sm text-white/80">预览</div>
+        </div>
+
+        {/* 标题与作者信息 */}
+        <div className="px-6 pt-5 pb-4 border-b border-gray-100">
+          <h1 className="text-3xl font-extrabold text-gray-900 mb-3">{title || '文章标题'}</h1>
+          <div className="flex items-center text-sm text-gray-500 space-x-3">
+            <div className="flex items-center space-x-2">
+              <div className="w-8 h-8 rounded-full bg-red-500 text-white flex items-center justify-center text-sm font-bold">字</div>
+              <span>字流</span>
+            </div>
+            <span>·</span>
+            <span>刚刚</span>
+            <span>·</span>
+            <span>阅读 1</span>
+          </div>
+        </div>
+
+        {/* 文章内容 */}
+        <div className="p-6">
+          <div
+            className="csdn-content prose prose-lg max-w-none"
+            dangerouslySetInnerHTML={{ __html: content }}
+          />
+        </div>
+
+        {/* 底部交互条 */}
+        <div className="px-6 py-4 border-t border-gray-100 bg-gray-50">
+          <div className="flex items-center space-x-6">
+            <button className="flex items-center space-x-2 text-gray-600 hover:text-red-600">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              </svg>
+              <span>点赞</span>
+            </button>
+            <button className="flex items-center space-x-2 text-gray-600 hover:text-red-600">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              <span>评论</span>
+            </button>
+            <button className="flex items-center space-x-2 text-gray-600 hover:text-red-600">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684z" />
+              </svg>
+              <span>分享</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 // 知识星球预览
 function ZsxqPreview({ title, content }: { title: string; content: string }) {
   return (
@@ -697,6 +781,34 @@ function ZsxqPreview({ title, content }: { title: string; content: string }) {
             </svg>
             <span>分享</span>
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// 小红书预览
+function XiaohongshuPreview({ title, content }: { title: string; content: string }) {
+  return (
+    <div className="p-6 bg-rose-50 min-h-full">
+      <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-sm border border-rose-100 overflow-hidden">
+        {/* 顶部品牌条 */}
+        <div className="bg-rose-500 text-white px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-white/10 rounded flex items-center justify-center font-bold">R</div>
+            <div className="font-semibold tracking-wide">小红书 · 创作平台</div>
+          </div>
+          <div className="text-sm text-white/80">预览</div>
+        </div>
+        {/* 标题 */}
+        <div className="px-6 pt-5 pb-4 border-b border-gray-100">
+          <h1 className="text-2xl font-extrabold text-gray-900 mb-2">{title || '笔记标题'}</h1>
+          <div className="text-xs text-gray-400">图文笔记</div>
+        </div>
+        {/* 正文 */}
+        <div className="p-6">
+          <div className="xhs-content prose max-w-none" dangerouslySetInnerHTML={{ __html: content }} />
         </div>
       </div>
     </div>

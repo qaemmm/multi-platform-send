@@ -25,10 +25,10 @@ export const FEATURES: Record<string, FeatureConfig> = {
 
   // 平台支持
   'multi-platform': {
-    id: 'multi-platform', 
+    id: 'multi-platform',
     name: '多平台发布',
-    description: '支持知乎、掘金、知识星球平台',
-    plans: ['pro']
+    description: '支持知乎、掘金、知识星球、CSDN平台',
+    plans: ['free', 'pro']
   },
 
   'wechat-platform': {
@@ -42,21 +42,35 @@ export const FEATURES: Record<string, FeatureConfig> = {
     id: 'zhihu-platform',
     name: '知乎平台',
     description: '发布到知乎专栏',
-    plans: ['pro']
+    plans: ['free', 'pro']
   },
 
   'juejin-platform': {
     id: 'juejin-platform',
-    name: '掘金平台', 
+    name: '掘金平台',
     description: '发布到掘金社区',
-    plans: ['pro']
+    plans: ['free', 'pro']
   },
 
   'zsxq-platform': {
     id: 'zsxq-platform',
     name: '知识星球',
     description: '发布到知识星球',
-    plans: ['pro']
+    plans: ['free', 'pro']
+  },
+
+  'csdn-platform': {
+    id: 'csdn-platform',
+    name: 'CSDN 平台',
+    description: '发布到 CSDN 博客',
+    plans: ['free', 'pro']
+  },
+
+  'xiaohongshu-platform': {
+    id: 'xiaohongshu-platform',
+    name: '小红书平台',
+    description: '发布到小红书创作平台',
+    plans: ['free', 'pro']
   },
 
   // 样式功能
@@ -126,7 +140,7 @@ export const UPGRADE_PROMPTS: Record<string, UpgradePromptConfig> = {
     title: '创建发布预设',
     description: '保存常用的发布配置，让发布更高效',
     features: ['publish-presets'],
-    cta: '解锁预设功能', 
+    cta: '解锁预设功能',
     style: 'tooltip'
   },
 
@@ -159,7 +173,7 @@ export const PRICING_CONFIG = {
   yearly: {
     price: 199,
     duration: 12,
-    label: '年付', 
+    label: '年付',
     description: '一次付费，全年无忧',
     savings: 40 // 相比月付节省的金额
   }

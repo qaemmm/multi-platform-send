@@ -5,7 +5,7 @@ import { z } from 'zod';
 // 请求验证schema
 const convertSchema = z.object({
   content: z.string().min(1, '内容不能为空'),
-  platform: z.enum(['wechat', 'zhihu', 'juejin', 'zsxq']).default('wechat'),
+  platform: z.enum(['wechat', 'zhihu', 'juejin', 'zsxq', 'csdn', 'xiaohongshu']).default('wechat'),
   style: z.enum(['default', 'tech', 'minimal']).default('default'),
 });
 
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({
         success: false,
-      error: error.issues?.[0]?.message || '参数错误',
+        error: error.issues?.[0]?.message || '参数错误',
       }, { status: 400 });
     }
 
@@ -47,7 +47,7 @@ export async function GET() {
       success: true,
       data: {
         styles,
-        platforms: ['wechat', 'zhihu', 'juejin', 'zsxq'],
+        platforms: ['wechat', 'zhihu', 'juejin', 'zsxq', 'csdn', 'xiaohongshu'],
       },
     });
   } catch (error) {

@@ -1,6 +1,6 @@
 // 平台特定的发布设置类型定义
 
-export type Platform = 'wechat' | 'zhihu' | 'juejin' | 'zsxq';
+export type Platform = 'wechat' | 'zhihu' | 'juejin' | 'zsxq' | 'csdn' | 'xiaohongshu';
 
 // 基础发布设置
 export interface BasePlatformSettings {
@@ -86,6 +86,22 @@ export const PLATFORM_CONFIGS: Record<Platform, PlatformInfo> = {
     color: 'bg-yellow-500',
     description: '知识星球文章和主题发布',
     supportedFeatures: ['多星球发布', '富文本编辑', 'Markdown支持', '文章模式', '主题模式']
+  },
+  csdn: {
+    id: 'csdn',
+    name: 'CSDN',
+    icon: '🅲',
+    color: 'bg-red-500',
+    description: 'CSDN 博客文章发布',
+    supportedFeatures: ['Markdown支持', '代码高亮', '分类/标签']
+  },
+  xiaohongshu: {
+    id: 'xiaohongshu',
+    name: '小红书',
+    icon: '🍓',
+    color: 'bg-rose-500',
+    description: '小红书图文笔记发布',
+    supportedFeatures: ['富文本编辑', '话题标签', '图片适配']
   }
 };
 
