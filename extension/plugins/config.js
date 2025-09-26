@@ -62,7 +62,7 @@ window.ZiliuPluginConfig = {
           },
           copyButton: {
             text: '复制正文',
-            tooltip: '复制文章正文内容'  
+            tooltip: '复制文章正文内容'
           }
         },
         fillMode: 'titleOnly'  // 知乎只填充标题
@@ -99,7 +99,7 @@ window.ZiliuPluginConfig = {
           },
           copyButton: {
             text: '复制正文',
-            tooltip: '复制文章正文内容'  
+            tooltip: '复制文章正文内容'
           }
         },
         fillMode: 'titleOnly'  // 掘金只填充标题
@@ -108,7 +108,7 @@ window.ZiliuPluginConfig = {
     },
     {
       id: 'zsxq',
-      name: '知识星球平台插件', 
+      name: '知识星球平台插件',
       displayName: '知识星球',
       enabled: true,
       requiredPlan: 'pro', // 需要专业版
@@ -142,6 +142,79 @@ window.ZiliuPluginConfig = {
         }
       },
       priority: 7
+    },
+    {
+      id: 'xiaohongshu',
+      name: '小红书平台插件',
+      displayName: '小红书',
+      enabled: true,
+      requiredPlan: 'pro',
+      featureId: 'xiaohongshu-platform',
+      urlPatterns: [
+        'https://creator.xiaohongshu.com/publish/publish*'
+      ],
+      editorUrl: 'https://creator.xiaohongshu.com/publish/publish?from=tab_switch',
+      selectors: {
+        title: [
+          'input[placeholder*="标题"]',
+          'input[placeholder*="请输入标题"]'
+        ],
+        content: [
+          '[contenteditable="true"]',
+          '.ql-editor',
+          '.ProseMirror'
+        ]
+      },
+      features: ['title', 'content', 'richText'],
+      contentType: 'html',
+      specialHandling: {
+        initDelay: 1500,
+        retryOnFail: true,
+        retryDelay: 2000,
+        buttonConfig: {
+          fillButton: { text: '📝 填充内容', tooltip: '填充标题和正文内容到小红书编辑器' },
+          copyButton: { text: '📋 复制备用', tooltip: '复制内容以备手动粘贴' }
+        }
+      },
+      priority: 9
+    },
+    {
+      id: 'csdn',
+      name: 'CSDN平台插件',
+      displayName: 'CSDN',
+      enabled: true,
+      requiredPlan: 'pro',
+      featureId: 'csdn-platform',
+      urlPatterns: [
+        'https://mp.csdn.net/mp_blog/creation/editor*'
+      ],
+      editorUrl: 'https://mp.csdn.net/mp_blog/creation/editor',
+      selectors: {
+        title: [
+          'input[placeholder*="标题"]',
+          'input[placeholder*="文章标题"]',
+          '#articleTitle'
+        ],
+        content: [
+          '.CodeMirror',
+          'textarea',
+          '[contenteditable="true"]'
+        ]
+      },
+      features: ['title', 'content', 'markdown'],
+      contentType: 'markdown',
+      specialHandling: {
+        initDelay: 1000,
+        waitForEditor: true,
+        maxWaitTime: 8000,
+        retryOnFail: true,
+        retryDelay: 1500,
+        buttonConfig: {
+          fillButton: { text: '💻 填充内容', tooltip: '填充标题和Markdown内容到CSDN编辑器' },
+          copyButton: { text: '📋 复制Markdown', tooltip: '复制Markdown格式内容' }
+        }
+      },
+      priority: 8
     }
   ],
 
@@ -154,7 +227,7 @@ window.ZiliuPluginConfig = {
       dependencies: []
     },
     {
-      id: 'preset-service', 
+      id: 'preset-service',
       name: '预设服务',
       enabled: true,
       dependencies: []
@@ -177,7 +250,7 @@ window.ZiliuPluginConfig = {
     },
     {
       id: 'button-generator',
-      name: '按钮生成器', 
+      name: '按钮生成器',
       enabled: true,
       dependencies: []
     }
@@ -187,13 +260,13 @@ window.ZiliuPluginConfig = {
   settings: {
     // 自动注入设置
     autoInject: true,
-    
+
     // 调试模式
     debug: false,
-    
+
     // 加载超时时间
     loadTimeout: 10000,
-    
+
     // 平台检测延迟
     platformDetectionDelay: 1000
   }
@@ -202,10 +275,10 @@ window.ZiliuPluginConfig = {
 /**
  * 根据当前URL获取应该加载的平台插件
  */
-window.ZiliuPluginConfig.getPluginsForUrl = function(url) {
+window.ZiliuPluginConfig.getPluginsForUrl = function (url) {
   return this.platforms.filter(platform => {
     if (!platform.enabled) return false;
-    
+
     return platform.urlPatterns.some(pattern => {
       try {
         const escapedPattern = pattern
