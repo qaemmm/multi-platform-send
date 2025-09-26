@@ -2,10 +2,13 @@
  * 字流助手 - 新架构主入口文件
  * 基于插件化的可扩展架构
  */
-(function() {
+(function () {
   'use strict';
 
   console.log('🚀 字流助手启动 - 新架构版本');
+
+  // 节流：避免在标签页切换时反复响应检测请求
+  let lastDetectResponseAt = 0;
 
   // 监听来自网页的消息
   window.addEventListener('message', (event) => {
@@ -13,14 +16,14 @@
     if (event.data?.type?.startsWith('ZILIU_')) {
       console.log('📡 收到字流消息:', event.data.type, 'from:', event.origin);
     }
-    
+
     // 只处理来自同源或字流网站的消息
     // 使用统一配置检查允许的域名
-    const isAllowedOrigin = event.origin === window.location.origin || 
-                          window.ZiliuConstants?.isAllowedOrigin?.(event.origin) ||
-                          event.origin.includes('ziliu.online') ||
-                          event.origin.includes('www.ziliu.online');
-    
+    const isAllowedOrigin = event.origin === window.location.origin ||
+      window.ZiliuConstants?.isAllowedOrigin?.(event.origin) ||
+      event.origin.includes('ziliu.online') ||
+      event.origin.includes('www.ziliu.online');
+
     if (!isAllowedOrigin) {
       console.log('🚫 拒绝来自未授权域名的消息:', event.origin);
       return;
@@ -29,7 +32,13 @@
     const { type, data, requestId, source } = event.data;
 
     switch (type) {
-      case 'ZILIU_EXTENSION_DETECT':
+      case 'ZILIU_EXTENSION_DETECT': {
+        const now = Date.now();
+        if (now - lastDetectResponseAt < 1200) {
+          // 1.2s 内重复请求直接忽略，减少日志风暴
+          break;
+        }
+        lastDetectResponseAt = now;
         console.log('📡 收到网页插件检测请求:', event.data);
         // 响应插件检测
         const response = {
@@ -39,8 +48,16 @@
           source: 'ziliu-extension'
         };
         console.log('📤 发送插件检测响应:', response);
-        window.postMessage(response, '*');
+        // 只回发给请求来源域
+        try {
+          window.postMessage(response, event.origin);
+        } catch (e) {
+          // 回退方案
+          window.postMessage(response, '*');
+        }
         break;
+      }
+
 
       case 'ZILIU_PUBLISH_REQUEST':
         console.log('🚀 收到发布请求:', data);
@@ -53,7 +70,7 @@
   function handlePublishRequest(data, requestId) {
     try {
       const { title, content, platform } = data;
-      
+
       // 调用现有的发布逻辑
       if (window.ZiliuApp && window.ZiliuApp.handleOneClickPublish) {
         window.ZiliuApp.handleOneClickPublish({
@@ -132,10 +149,10 @@
     async waitForCoreModules(maxWaitTime = 10000) {
       console.log('⏳ 等待核心模块加载...');
       const startTime = Date.now();
-      
+
       return new Promise((resolve, reject) => {
         const checkModules = () => {
-          const missingModules = this.coreModules.filter(module => 
+          const missingModules = this.coreModules.filter(module =>
             !this.isModuleLoaded(module)
           );
 
@@ -165,22 +182,22 @@
      */
     async initServices() {
       console.log('🔧 初始化核心服务...');
-      
+
       // 初始化配置服务
       if (window.ZiliuConfigService) {
         await window.ZiliuConfigService.init();
       }
-      
+
       // 初始化API服务
       if (window.ZiliuApiService) {
         await window.ZiliuApiService.init();
       }
-      
+
       // 初始化工具服务
       if (window.ZiliuUtilsService) {
         window.ZiliuUtilsService.init();
       }
-      
+
       console.log('✅ 核心服务初始化完成');
     }
   };
@@ -238,17 +255,17 @@
       if (chrome?.runtime?.onMessage) {
         chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
           console.log('📨 收到外部消息:', request.action);
-          
+
           try {
             let result;
-            
+
             if (window.ZiliuApp && window.ZiliuApp.isInitialized) {
               // 使用新系统处理
               result = await window.ZiliuApp.handleMessage(request);
             } else {
               result = { success: false, error: '系统未就绪' };
             }
-            
+
             sendResponse(result);
           } catch (error) {
             console.error('消息处理失败:', error);
@@ -294,7 +311,7 @@
      */
     async delayedInitialize() {
       await this.waitForPageReady();
-      
+
       // 额外延迟以确保动态内容加载
       const delay = this.getInitDelay();
       if (delay > 0) {
@@ -310,7 +327,7 @@
      */
     getInitDelay() {
       const url = window.location.href;
-      
+
       // 使用平台配置中的延迟设置
       if (window.ZiliuPluginConfig) {
         const matchedPlatforms = window.ZiliuPluginConfig.getPluginsForUrl(url);
@@ -319,7 +336,7 @@
           return platform.specialHandling?.initDelay || platform.loadDelay || 1000;
         }
       }
-      
+
       return 1000; // 默认延迟
     }
   };
@@ -333,12 +350,12 @@
     if (window.ZiliuPluginConfig) {
       const matchedPlatforms = window.ZiliuPluginConfig.getPluginsForUrl(url);
       const platform = matchedPlatforms.find(p => p.specialHandling?.retryOnFail);
-      
+
       if (platform) {
         const retryDelay = platform.specialHandling.retryDelay || 3000;
         setTimeout(async () => {
           console.log(`🔄 ${platform.displayName}平台延迟重试...`);
-          
+
           // 检查是否需要重新初始化
           if (window.ZiliuApp && window.ZiliuApp.currentPlatform === null) {
             try {

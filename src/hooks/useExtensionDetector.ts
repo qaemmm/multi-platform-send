@@ -9,7 +9,7 @@ interface ExtensionInfo {
 
 export function useExtensionDetector() {
   const [isInstalled, setIsInstalled] = useState(false);
-  const [isChecking, setIsChecking] = useState(true);
+  const [isChecking, setIsChecking] = useState(false); // 修复：初始为false，避免首次检测被跳过
   const [extensionInfo, setExtensionInfo] = useState<ExtensionInfo | null>(null);
   const [detectionAttempts, setDetectionAttempts] = useState(0);
   const [hasDetected, setHasDetected] = useState(false);
@@ -63,8 +63,8 @@ export function useExtensionDetector() {
 
     // 监听插件响应
     const handleMessage = (event: MessageEvent) => {
-      // 验证消息来源，防止XSS攻击
-      if (event.origin !== window.location.origin && event.origin !== 'chrome-extension://') {
+      // 修复：简化消息来源校验，content script使用window.postMessage时origin是当前页面
+      if (event.origin !== window.location.origin) {
         return;
       }
 
@@ -81,6 +81,7 @@ export function useExtensionDetector() {
         });
         setIsChecking(false);
         setHasDetected(true); // 只有成功检测后才标记为已完成
+        window.removeEventListener('message', handleMessage);
       } else if (event.data?.type === 'ZILIU_EXTENSION_READY') {
         console.log('✅ 收到插件就绪信号:', event.data);
       }

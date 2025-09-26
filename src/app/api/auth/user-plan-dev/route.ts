@@ -1,24 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 
-// 获取用户订阅信息
+// 开发环境专用 - 获取用户订阅信息（绕过认证）
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json({
-        success: false,
-        error: '请先登录',
-      }, { status: 401 });
-    }
+    // 开发环境专用 - 直接查询数据库
+    const userEmail = '842123094@qq.com';
 
     // 获取用户信息
     const user = await db.query.users.findFirst({
-      where: eq(users.email, session.user.email),
+      where: eq(users.email, userEmail),
       columns: {
         id: true,
         email: true,

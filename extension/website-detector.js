@@ -2,8 +2,11 @@
  * 网站端插件检测脚本
  * 专门用于在字流网站上响应插件检测请求
  */
-(function() {
+(function () {
   'use strict';
+
+  // 节流：避免频繁响应导致控制台“像在刷新”
+  let lastDetectRespondAt = 0;
 
   console.log('🌐 字流网站端检测脚本已加载');
   console.log('📍 当前页面URL:', window.location.href);
@@ -18,10 +21,10 @@
 
     // 处理来自字流网站（包括本地开发环境）的消息
     const isAllowedOrigin = event.origin === window.location.origin ||
-                          event.origin.includes('localhost:3000') ||
-                          event.origin.includes('127.0.0.1:3000') ||
-                          event.origin.includes('ziliu.online') ||
-                          event.origin.includes('www.ziliu.online');
+      event.origin.includes('localhost:3000') ||
+      event.origin.includes('127.0.0.1:3000') ||
+      event.origin.includes('ziliu.online') ||
+      event.origin.includes('www.ziliu.online');
 
     console.log('📡 检查消息来源是否允许:', isAllowedOrigin);
 
@@ -35,6 +38,13 @@
     console.log('📡 解析消息类型:', type);
 
     if (type === 'ZILIU_EXTENSION_DETECT') {
+      const now = Date.now();
+      // 1200ms 内的重复请求直接忽略，避免焦点切换造成日志风暴
+      if (now - lastDetectRespondAt < 1200) {
+        return;
+      }
+      lastDetectRespondAt = now;
+
       console.log('🎯 网站端收到插件检测请求');
       console.log('📦 扩展版本:', window.ZiliuConstants?.VERSION || '1.0.0');
 
@@ -44,26 +54,18 @@
         version: window.ZiliuConstants?.VERSION || '1.0.0',
         installed: true,
         source: 'ziliu-extension',
-        timestamp: Date.now()
+        timestamp: now
       };
 
       console.log('📤 准备发送插件检测响应:', response);
       console.log('🎯 目标域名:', event.origin);
 
-      // 发送响应
+      // 仅回发给来源域，避免重复
       try {
         window.postMessage(response, event.origin);
         console.log('✅ 响应已发送到:', event.origin);
       } catch (error) {
         console.error('❌ 发送响应失败:', error);
-      }
-
-      // 也尝试发送到开发环境
-      if (event.origin.includes('localhost')) {
-        setTimeout(() => {
-          console.log('🔄 尝试发送响应到开发环境');
-          window.postMessage(response, 'http://localhost:3000');
-        }, 50);
       }
     }
   });

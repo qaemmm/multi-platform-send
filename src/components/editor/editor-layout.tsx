@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { MultiPlatformEditor } from './multi-platform-editor';
 import { PlatformPreview } from './platform-preview';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import {
   Info
 } from 'lucide-react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { countWords, calculateReadingTime } from '@/lib/utils';
 import { FeishuImportDialog } from './feishu-import-dialog';
 
@@ -39,6 +40,11 @@ export function EditorLayout({
   const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' | 'info' }>({
     visible: false, message: '', type: 'success'
   });
+
+  const pathname = usePathname();
+  const draftKey = useMemo(() => `ziliu:draft:${pathname || 'unknown'}`, [pathname]);
+  const saveTimerRef = useRef<number | null>(null);
+  const isMountedRef = useRef(false);
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToast({ visible: true, message, type });
@@ -71,6 +77,8 @@ export function EditorLayout({
     try {
       if (onSave) {
         await onSave(title, content);
+        // 清理对应草稿
+        try { if (typeof window !== 'undefined') localStorage.removeItem(draftKey); } catch { }
         setLastSaved(new Date());
         showToast('保存成功', 'success');
       }
@@ -92,18 +100,62 @@ export function EditorLayout({
     }
   };
 
+  // 本地自动保存：2秒防抖写入 localStorage；首次挂载尝试恢复
+  useEffect(() => {
+    // 首次挂载时尝试恢复草稿
+    if (!isMountedRef.current) {
+      isMountedRef.current = true;
+      try {
+        const raw = typeof window !== 'undefined' ? localStorage.getItem(draftKey) : null;
+        if (raw) {
+          const draft = JSON.parse(raw) as { title?: string; content?: string; ts?: number };
+          const hasDifferent = (draft.title ?? '') !== (initialTitle ?? '') || (draft.content ?? '') !== (initialContent ?? '');
+          if (hasDifferent) {
+            const shouldRestore = window.confirm('检测到未保存的草稿，是否恢复？');
+            if (shouldRestore) {
+              if (typeof draft.title === 'string') setTitle(draft.title);
+              if (typeof draft.content === 'string') setContent(draft.content);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('读取草稿失败:', e);
+      }
+    }
+
+    // 变更后开启防抖保存
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+    }
+    saveTimerRef.current = window.setTimeout(() => {
+      try {
+        if (typeof window !== 'undefined') {
+          const payload = JSON.stringify({ title, content, ts: Date.now() });
+          localStorage.setItem(draftKey, payload);
+        }
+      } catch (e) {
+        console.warn('写入草稿失败:', e);
+      }
+    }, 2000);
+
+    return () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+      }
+    };
+  }, [title, content, draftKey, initialTitle, initialContent]);
+
   return (
     <div className="h-screen flex flex-col bg-gray-50">
       {/* Toast 提示 */}
       {toast.visible && (
         <div
-          className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-lg shadow-lg border flex items-center gap-2 text-sm ${
-            toast.type === 'success'
-              ? 'bg-green-50 border-green-200 text-green-700'
-              : toast.type === 'info'
+          className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-lg shadow-lg border flex items-center gap-2 text-sm ${toast.type === 'success'
+            ? 'bg-green-50 border-green-200 text-green-700'
+            : toast.type === 'info'
               ? 'bg-blue-50 border-blue-200 text-blue-700'
               : 'bg-red-50 border-red-200 text-red-700'
-          }`}
+            }`}
         >
           {toast.type === 'success' ? (
             <CheckCircle2 className="h-4 w-4" />

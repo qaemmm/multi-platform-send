@@ -4,13 +4,13 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Download, 
-  CheckCircle2, 
-  AlertCircle, 
-  Loader2, 
-  Chrome, 
-  Settings, 
+import {
+  Download,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  Chrome,
+  Settings,
   FolderOpen,
   RefreshCw,
   ExternalLink
@@ -24,11 +24,11 @@ export default function ExtensionPage() {
   useEffect(() => {
     const checkExtension = () => {
       console.log('🔍 检测插件是否已安装...');
-      
+
       // 发送检测消息到插件
-      window.postMessage({ 
+      window.postMessage({
         type: 'ZILIU_EXTENSION_DETECT',
-        source: 'ziliu-website' 
+        source: 'ziliu-website'
       }, '*');
 
       // 设置超时，如果2秒内没有响应则认为未安装
@@ -48,7 +48,7 @@ export default function ExtensionPage() {
       };
 
       window.addEventListener('message', handleMessage);
-      
+
       return () => {
         clearTimeout(timeout);
         window.removeEventListener('message', handleMessage);
@@ -57,16 +57,34 @@ export default function ExtensionPage() {
 
     // 延迟一点时间再检测，确保页面完全加载
     const delayedCheck = setTimeout(checkExtension, 500);
-    
+
     return () => clearTimeout(delayedCheck);
   }, []);
 
   // 重新检测插件
   const recheckExtension = () => {
     setExtensionStatus('checking');
-    setTimeout(() => {
-      window.location.reload();
-    }, 500);
+
+    // 重新发送检测消息，而不是整页刷新
+    window.postMessage({
+      type: 'ZILIU_EXTENSION_DETECT',
+      source: 'ziliu-website'
+    }, '*');
+
+    // 2秒内未响应则判定未安装
+    const timeout = setTimeout(() => {
+      setExtensionStatus('not-installed');
+    }, 2000);
+
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'ZILIU_EXTENSION_RESPONSE') {
+        clearTimeout(timeout);
+        setExtensionStatus('installed');
+        window.removeEventListener('message', handleMessage);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
   };
 
   // 下载插件文件
@@ -123,10 +141,10 @@ export default function ExtensionPage() {
                 </Badge>
               )}
             </div>
-            
-            <Button 
-              variant="outline" 
-              size="sm" 
+
+            <Button
+              variant="outline"
+              size="sm"
               onClick={recheckExtension}
               disabled={extensionStatus === 'checking'}
             >
@@ -143,8 +161,8 @@ export default function ExtensionPage() {
               </div>
               <p className="text-green-700 mt-2">
                 你现在可以在编辑器中使用一键发布功能了。
-                <Button 
-                  variant="link" 
+                <Button
+                  variant="link"
                   className="p-0 h-auto text-green-700 underline ml-2"
                   onClick={() => window.open('/editor/new', '_blank')}
                 >
@@ -168,8 +186,8 @@ export default function ExtensionPage() {
             </CardHeader>
             <CardContent>
               <div className="text-center">
-                <Button 
-                  size="lg" 
+                <Button
+                  size="lg"
                   className="bg-blue-600 hover:bg-blue-700"
                   onClick={downloadExtension}
                   disabled={isDownloading}
@@ -222,7 +240,7 @@ export default function ExtensionPage() {
                       打开浏览器扩展管理页面
                       <Chrome size={16} />
                     </h3>
-                    <p className="text-gray-600">在地址栏输入 
+                    <p className="text-gray-600">在地址栏输入
                       <code className="mx-1 px-2 py-1 bg-gray-100 rounded text-sm">chrome://extensions/</code>
                       并回车
                     </p>

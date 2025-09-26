@@ -13,7 +13,9 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "db:push": "drizzle-kit push",
-    "r2:create-bucket": "node ./scripts/create-r2-bucket.js"
+    "r2:create-bucket": "node ./scripts/create-r2-bucket.js",
+    "fix:plan": "node ./scripts/fix-user-plan.mjs",
+    "fix:plan:me": "node ./scripts/fix-user-plan.mjs --email=842123094@qq.com"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.10.0",

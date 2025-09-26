@@ -22,6 +22,41 @@ const ZILIU_CONFIG = {
   }
 };
 
+// 平台基础配置（在Service Worker中使用，不依赖window）
+const PLATFORM_CONFIGS = {
+  wechat: {
+    urlPatterns: ['*://mp.weixin.qq.com/*'],
+    editorUrl: 'https://mp.weixin.qq.com/',
+    platformName: '微信公众号',
+    loadDelay: 2000
+  },
+  zhihu: {
+    urlPatterns: ['*://zhuanlan.zhihu.com/write*', '*://zhuanlan.zhihu.com/p/*/edit*'],
+    editorUrl: 'https://zhuanlan.zhihu.com/write',
+    platformName: '知乎',
+    loadDelay: 1500
+  },
+  juejin: {
+    urlPatterns: ['*://juejin.cn/editor/*', '*://juejin.cn/post/*'],
+    editorUrl: 'https://juejin.cn/editor/drafts/new',
+    platformName: '掘金',
+    loadDelay: 2000
+  },
+  zsxq: {
+    urlPatterns: ['*://wx.zsxq.com/group/*', '*://wx.zsxq.com/article?groupId=*'],
+    editorUrl: 'https://wx.zsxq.com/',
+    platformName: '知识星球',
+    loadDelay: 1000
+  }
+};
+
+function normalizePlatformId(platform) {
+  const map = { '微信': 'wechat', '微信公众号': 'wechat', '知乎': 'zhihu', '掘金': 'juejin', '知识星球': 'zsxq' };
+  const key = (platform || 'wechat').toString().toLowerCase();
+  return map[platform] || map[key] || key;
+}
+
+
 // 安装时的初始化
 chrome.runtime.onInstalled.addListener(() => {
   console.log('字流助手已安装');
@@ -83,27 +118,32 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       };
     },
 
-    // 填充内容到标签页
+    // 填充内容到标签页（通过内容脚本执行，SW 不直接访问 window.*）
     fillContentToTab: async (data) => {
       const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
       const activeTab = tabs[0];
 
-      // 使用平台管理器检查是否支持当前页面
-      const isSupported = window.ZiliuPlatformManager
-        ? window.ZiliuPlatformManager.findPlatformByUrl(activeTab.url) !== null
-        : false;
-
-      if (!isSupported) {
+      // 基于URL模式判断是否为受支持的平台页面
+      const platformConfig = findMatchingPlatform(activeTab?.url || '');
+      if (!platformConfig) {
         throw new Error('当前页面不支持内容填充功能');
       }
 
-      // 发送消息到content script
+      // 先 ping 内容脚本，确认可通信
       return new Promise((resolve) => {
-        chrome.tabs.sendMessage(activeTab.id, {
-          action: 'fillContent',
-          data: data
-        }, (response) => {
-          resolve(response || { success: false, error: '无法连接到页面' });
+        chrome.tabs.sendMessage(activeTab.id, { action: 'ping' }, (_pong) => {
+          if (chrome.runtime.lastError) {
+            resolve({ success: false, error: '页面未注入字流脚本或不可通信' });
+            return;
+          }
+          // 发送填充请求
+          chrome.tabs.sendMessage(activeTab.id, { action: 'fillContent', data }, (response) => {
+            if (chrome.runtime.lastError) {
+              resolve({ success: false, error: chrome.runtime.lastError.message || '无法连接到页面' });
+            } else {
+              resolve(response || { success: false, error: '无法连接到页面' });
+            }
+          });
         });
       });
     },
@@ -224,31 +264,20 @@ async function handleApiRequest(requestData) {
 
 // 通知所有相关平台页面有新内容
 function notifyPlatformTabs() {
-  if (!window.ZiliuPlatformManager) {
-    console.warn('⚠️ 平台管理器未加载，无法通知平台页面');
-    return;
-  }
-
-  // 获取所有支持的平台URL模式
-  const supportedPlatforms = window.ZiliuPlatformManager.getSupportedPlatforms();
-
-  supportedPlatforms.forEach(platformId => {
-    const platform = window.ZiliuPlatformManager.getPlatformInfo(platformId);
-    if (platform && platform.urlPatterns) {
-      // 为每个URL模式查询对应的标签页
-      platform.urlPatterns.forEach(pattern => {
-        const queryPattern = pattern.replace('https://', '*://').replace('http://', '*://');
-        chrome.tabs.query({ url: queryPattern }, (tabs) => {
-          tabs.forEach(tab => {
-            chrome.tabs.sendMessage(tab.id, {
-              action: 'contentUpdated'
-            }).catch(() => {
-              // 忽略无法发送消息的错误（页面可能还未加载完成）
+  // 遍历已知平台URL模式，向匹配的标签页广播更新消息
+  Object.values(PLATFORM_CONFIGS).forEach(cfg => {
+    (cfg.urlPatterns || []).forEach(pattern => {
+      chrome.tabs.query({ url: pattern }, (tabs) => {
+        tabs.forEach(t => {
+          try {
+            chrome.tabs.sendMessage(t.id, { action: 'contentUpdated' }, () => {
+              // 忽略错误（页面未加载/未注入内容脚本等）
+              void chrome.runtime.lastError;
             });
-          });
+          } catch (_e) { /* ignore */ }
         });
       });
-    }
+    });
   });
 }
 
@@ -282,43 +311,14 @@ async function handleOneClickPublish(data) {
 
 // 获取平台配置（使用平台管理服务）
 function getPlatformConfig(platform) {
-  // 等待平台管理器加载（在实际应用中，这应该在extension启动时初始化）
-  if (!window.ZiliuPlatformManager) {
-    console.warn('⚠️ 平台管理器未加载，使用默认微信配置');
-    // 从插件配置获取默认微信配置
-    if (window.ZiliuPluginConfig && window.ZiliuPluginConfig.platforms) {
-      const wechatPlatform = window.ZiliuPluginConfig.platforms.find(p => p.id === 'wechat');
-      if (wechatPlatform) {
-        return {
-          urlPattern: wechatPlatform.urlPatterns[0].replace('https://', '*://'),
-          newTabUrl: wechatPlatform.editorUrl,
-          platformName: wechatPlatform.displayName,
-          loadDelay: wechatPlatform.specialHandling?.initDelay || 2000
-        };
-      }
-    }
-
-    // 最后的硬编码兜底（理论上不应该到这里）
-    return {
-      urlPattern: '*://mp.weixin.qq.com/*',
-      newTabUrl: 'https://mp.weixin.qq.com/',
-      platformName: '微信公众号',
-      loadDelay: 2000
-    };
-  }
-
-  // 规范化平台ID
-  const normalizedId = window.ZiliuPlatformManager.normalizePlatformId(platform) || 'wechat';
-
-  // 获取平台发布配置
-  const config = window.ZiliuPlatformManager.getPlatformPublishConfig(normalizedId);
-
-  if (!config) {
-    console.warn(`⚠️ 未找到平台配置: ${platform}, 使用默认配置`);
-    return window.ZiliuPlatformManager.getPlatformPublishConfig('wechat');
-  }
-
-  return config;
+  const id = normalizePlatformId(platform) || 'wechat';
+  const cfg = PLATFORM_CONFIGS[id] || PLATFORM_CONFIGS['wechat'];
+  return {
+    urlPattern: (cfg.urlPatterns && cfg.urlPatterns[0]) || '*://mp.weixin.qq.com/*',
+    newTabUrl: cfg.editorUrl,
+    platformName: cfg.platformName,
+    loadDelay: cfg.loadDelay || 2000
+  };
 }
 
 // 通用的平台发布处理
@@ -413,8 +413,9 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
             chrome.tabs.sendMessage(tabId, {
               action: 'autoFillContent',
               data: result.ziliu_content
-            }).catch(error => {
-              console.warn('自动填充失败:', error);
+            }, () => {
+              // 忽略错误（可能未注入内容脚本）
+              void chrome.runtime.lastError;
             });
           }, 1000);
         }
@@ -425,13 +426,19 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 
 // 查找匹配的平台配置（使用平台管理服务）
 function findMatchingPlatform(url) {
-  if (!window.ZiliuPlatformManager) {
-    console.warn('⚠️ 平台管理器未加载，无法匹配平台');
-    return null;
+  for (const cfg of Object.values(PLATFORM_CONFIGS)) {
+    for (const pattern of (cfg.urlPatterns || [])) {
+      if (urlMatches(url, pattern)) {
+        return {
+          urlPattern: pattern,
+          newTabUrl: cfg.editorUrl,
+          platformName: cfg.platformName,
+          loadDelay: cfg.loadDelay || 2000
+        };
+      }
+    }
   }
-
-  const platform = window.ZiliuPlatformManager.findPlatformByUrl(url);
-  return platform?.publishConfig || null;
+  return null;
 }
 
 // URL匹配检查

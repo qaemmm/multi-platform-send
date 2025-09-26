@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Crown, Gift, Sparkles, X } from 'lucide-react';
 import { UPGRADE_PROMPTS, PRICING_CONFIG } from '../config/features';
+import { useUserPlan } from '../hooks/useUserPlan';
 import { RedeemCodeDialog } from '@/components/ui/redeem-code-dialog';
 import { WechatGuideDialog } from '@/components/ui/wechat-guide-dialog';
 
@@ -18,15 +19,18 @@ export function UpgradePrompt({ scenario, style: overrideStyle, onClose }: Upgra
   const [showRedeemDialog, setShowRedeemDialog] = useState(false);
   const [showWechatGuide, setShowWechatGuide] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  
+
   const config = UPGRADE_PROMPTS[scenario];
   if (!config) return null;
-  
+
   const displayStyle = overrideStyle || config.style;
 
-  const handleRedeemSuccess = (data: any) => {
-    // 刷新页面以更新订阅状态
-    window.location.reload();
+  const { refreshPlan, refreshUsage } = useUserPlan();
+
+  const handleRedeemSuccess = (_data: any) => {
+    // 局部刷新用户订阅与用量，避免整页刷新
+    refreshPlan?.();
+    refreshUsage?.();
   };
 
   // 卡片样式
@@ -44,8 +48,8 @@ export function UpgradePrompt({ scenario, style: overrideStyle, onClose }: Upgra
                 <p className="text-blue-700 mb-3">{config.description}</p>
                 <div className="flex flex-wrap gap-2">
                   {config.features.map((feature) => (
-                    <span 
-                      key={feature} 
+                    <span
+                      key={feature}
                       className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
                     >
                       <Sparkles className="h-3 w-3 mr-1" />
@@ -70,7 +74,7 @@ export function UpgradePrompt({ scenario, style: overrideStyle, onClose }: Upgra
             </div>
           </CardContent>
         </Card>
-        
+
         <WechatGuideDialog
           isOpen={showWechatGuide}
           onClose={() => setShowWechatGuide(false)}
@@ -79,7 +83,7 @@ export function UpgradePrompt({ scenario, style: overrideStyle, onClose }: Upgra
             setShowRedeemDialog(true);
           }}
         />
-        
+
         <RedeemCodeDialog
           isOpen={showRedeemDialog}
           onClose={() => setShowRedeemDialog(false)}
@@ -107,9 +111,9 @@ export function UpgradePrompt({ scenario, style: overrideStyle, onClose }: Upgra
                   </Button>
                 )}
               </div>
-              
+
               <p className="text-gray-600 mb-4">{config.description}</p>
-              
+
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div className="bg-gray-50 rounded-lg p-4 text-center">
                   <div className="font-medium text-gray-900">月付版</div>
@@ -122,7 +126,7 @@ export function UpgradePrompt({ scenario, style: overrideStyle, onClose }: Upgra
                   <div className="text-sm text-orange-600">立省¥40</div>
                 </div>
               </div>
-              
+
               <Button
                 onClick={() => setShowWechatGuide(true)}
                 className="w-full bg-blue-600 hover:bg-blue-700"
@@ -133,7 +137,7 @@ export function UpgradePrompt({ scenario, style: overrideStyle, onClose }: Upgra
             </CardContent>
           </Card>
         </div>
-        
+
         <WechatGuideDialog
           isOpen={showWechatGuide}
           onClose={() => setShowWechatGuide(false)}
@@ -142,7 +146,7 @@ export function UpgradePrompt({ scenario, style: overrideStyle, onClose }: Upgra
             setShowRedeemDialog(true);
           }}
         />
-        
+
         <RedeemCodeDialog
           isOpen={showRedeemDialog}
           onClose={() => setShowRedeemDialog(false)}
@@ -172,7 +176,7 @@ export function UpgradePrompt({ scenario, style: overrideStyle, onClose }: Upgra
           </div>
           <p className="text-xs text-blue-700 mt-1">{config.description}</p>
         </div>
-        
+
         <WechatGuideDialog
           isOpen={showWechatGuide}
           onClose={() => setShowWechatGuide(false)}
@@ -181,7 +185,7 @@ export function UpgradePrompt({ scenario, style: overrideStyle, onClose }: Upgra
             setShowRedeemDialog(true);
           }}
         />
-        
+
         <RedeemCodeDialog
           isOpen={showRedeemDialog}
           onClose={() => setShowRedeemDialog(false)}
@@ -210,7 +214,7 @@ export function UpgradePrompt({ scenario, style: overrideStyle, onClose }: Upgra
           </Button>
         </div>
       </div>
-      
+
       <WechatGuideDialog
         isOpen={showWechatGuide}
         onClose={() => setShowWechatGuide(false)}
@@ -219,7 +223,7 @@ export function UpgradePrompt({ scenario, style: overrideStyle, onClose }: Upgra
           setShowRedeemDialog(true);
         }}
       />
-      
+
       <RedeemCodeDialog
         isOpen={showRedeemDialog}
         onClose={() => setShowRedeemDialog(false)}

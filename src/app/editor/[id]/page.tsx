@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useParams } from 'next/navigation';
 import { EditorLayout } from '@/components/editor/editor-layout';
@@ -24,6 +24,8 @@ export default function EditArticlePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const hasFetchedRef = useRef(false);
+
   const articleId = params.id as string;
 
   useEffect(() => {
@@ -32,16 +34,18 @@ export default function EditArticlePage() {
       router.push('/auth/signin');
       return;
     }
-
-    // 获取文章详情
-    fetchArticle();
+    // 避免因窗口聚焦触发的 session 轻微变化而重复拉取
+    if (!hasFetchedRef.current) {
+      hasFetchedRef.current = true;
+      fetchArticle();
+    }
   }, [session, status, router, articleId]);
 
   const fetchArticle = async () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await fetch(`/api/articles/${articleId}`);
       const data = await response.json();
 
