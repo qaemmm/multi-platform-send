@@ -27,7 +27,7 @@ export function PlatformPreview({ title, content }: PlatformPreviewProps) {
   
   // 添加订阅信息和插件检测
   const { hasFeature, checkFeatureAccess } = useUserPlan();
-  const { isInstalled, isChecking } = useExtensionDetector();
+  const { isInstalled, isChecking, resetDetection } = useExtensionDetector();
   const router = useRouter();
 
   // 平台配置

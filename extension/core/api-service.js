@@ -204,7 +204,7 @@ class ApiService {
       },
 
       plan: async () => {
-        return this.cachedRequest('/api/auth/user-plan');
+        return this.cachedRequest('/api/auth/user-plan-dev');
       }
     };
   }
@@ -215,7 +215,7 @@ class ApiService {
   get subscription() {
     return {
       getUserPlan: async () => {
-        return this.cachedRequest('/api/auth/user-plan');
+        return this.cachedRequest('/api/auth/user-plan-dev');
       },
 
       getUsage: async () => {

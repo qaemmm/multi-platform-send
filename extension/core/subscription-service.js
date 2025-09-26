@@ -189,10 +189,10 @@ class SubscriptionService {
     try {
       console.log('📡 开始同步用户订阅信息...');
       
-      // 添加超时机制
+      // 添加超时机制 - 开发环境使用专用端点
       const response = await Promise.race([
-        window.ZiliuApiService.makeRequest('/api/auth/user-plan'),
-        new Promise((_, reject) => 
+        window.ZiliuApiService.makeRequest('/api/auth/user-plan-dev'),
+        new Promise((_, reject) =>
           setTimeout(() => reject(new Error('用户订阅信息请求超时')), 8000)
         )
       ]);

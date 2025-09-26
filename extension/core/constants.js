@@ -8,8 +8,8 @@ class ZiliuConstants {
   
   // 根据环境自动选择URL
   static get DEFAULT_API_BASE_URL() {
-    // 可以通过manifest或其他方式检测环境
-    return this.PRODUCTION_URL;
+    // 开发环境使用本地地址
+    return this.DEVELOPMENT_URL;
   }
   
   // API端点
@@ -67,10 +67,14 @@ class ZiliuConstants {
 // 导出为全局变量（兼容service worker和content script）
 if (typeof window !== 'undefined') {
   window.ZiliuConstants = ZiliuConstants;
+  console.log('✅ 字流配置常量已加载到 window 对象');
+  console.log('📍 当前页面URL:', window.location.href);
+  console.log('📌 插件版本:', ZiliuConstants.VERSION);
+  console.log('📌 API基础URL:', ZiliuConstants.DEFAULT_API_BASE_URL);
 } else if (typeof self !== 'undefined') {
   self.ZiliuConstants = ZiliuConstants;
+  console.log('✅ 字流配置常量已加载到 self 对象 (service worker)');
 } else if (typeof global !== 'undefined') {
   global.ZiliuConstants = ZiliuConstants;
+  console.log('✅ 字流配置常量已加载到 global 对象');
 }
-
-console.log('✅ 字流配置常量已加载');

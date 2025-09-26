@@ -17,7 +17,9 @@
     "https://juejin.cn/*",
     "https://wx.zsxq.com/*",
     "https://www.ziliu.online/*",
-    "https://ziliu.online/*"
+    "https://ziliu.online/*",
+    "http://localhost:3000/*",
+    "http://127.0.0.1:3000/*"
   ],
   "content_scripts": [
     {
@@ -138,7 +140,9 @@
     {
       "matches": [
         "https://www.ziliu.online/*",
-        "https://ziliu.online/*"
+        "https://ziliu.online/*",
+        "http://localhost:3000/*",
+        "http://127.0.0.1:3000/*"
       ],
       "js": [
         "core/constants.js",

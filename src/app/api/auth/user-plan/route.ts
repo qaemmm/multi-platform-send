@@ -36,13 +36,19 @@ export async function GET(request: NextRequest) {
       }, { status: 404 });
     }
 
+    // 计算专业版状态
+    const isPro = user.plan === 'pro';
+    const isExpired = user.plan === 'pro' && user.plan_expired_at && user.plan_expired_at <= Math.floor(Date.now() / 1000);
+    const isValidPro = isPro && !isExpired;
+
     return NextResponse.json({
       success: true,
       data: {
         plan: user.plan,
-        planExpiredAt: user.planExpiredAt?.toISOString(),
-        isPro: user.plan === 'pro' && (!user.planExpiredAt || user.planExpiredAt > new Date()),
-        isExpired: user.plan === 'pro' && user.planExpiredAt && user.planExpiredAt <= new Date(),
+        planExpiredAt: user.plan_expired_at ? new Date(user.plan_expired_at * 1000).toISOString() : null,
+        isPro: isValidPro,
+        isExpired: isExpired,
+        plan_expired_at: user.plan_expired_at // 添加原始时间戳
       },
     });
   } catch (error) {

@@ -107,7 +107,7 @@ export function UserPlanProvider({ children }: { children: React.ReactNode }) {
       refreshPlan();
       refreshUsage();
     }
-  }, [refreshPlan, refreshUsage]);
+  }, [session?.user?.email]); // 只在session变化时触发，避免循环调用
 
   // 计算订阅状态
   const isPro = planData.plan === 'pro' && (!planData.planExpiredAt || new Date(planData.planExpiredAt) > new Date());
