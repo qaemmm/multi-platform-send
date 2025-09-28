@@ -4,6 +4,10 @@ import { eq, and } from 'drizzle-orm';
 import { FEATURES } from '../subscription/config/features';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { v4 as uuidv4 } from 'uuid';
+import { createQiniuStorageService, type QiniuUploadResult } from './qiniu-storage';
+
+// 支持的存储提供商类型
+export type StorageProvider = 'r2' | 'qiniu' | 'auto';
 
 // 配置 Cloudflare R2 客户端
 const r2Client = new S3Client({
@@ -16,6 +20,9 @@ const r2Client = new S3Client({
   forcePathStyle: true,
   tls: true,
 });
+
+// 初始化七牛云服务
+const qiniuService = createQiniuStorageService();
 
 // 图片大小限制配置
 const IMAGE_SIZE_LIMITS = {
@@ -42,6 +49,7 @@ export interface ImageUploadResult {
   fileType?: string;
   uploadPath?: string;
   error?: string;
+  provider?: string; // 新增：标识使用的存储提供商
 }
 
 /**
@@ -270,6 +278,7 @@ export async function uploadImageToR2(
       fileSize: file.size,
       fileType: file.type || 'image/jpeg',
       uploadPath: filePath,
+      provider: 'r2'
     };
 
   } catch (error) {
@@ -282,11 +291,122 @@ export async function uploadImageToR2(
 }
 
 /**
- * 从URL下载图片并上传到R2
+ * 上传图片到七牛云
+ */
+export async function uploadImageToQiniu(
+  file: File | Blob,
+  fileName: string,
+  userEmail: string
+): Promise<ImageUploadResult> {
+  try {
+    if (!qiniuService) {
+      return { success: false, error: '七牛云服务未配置' };
+    }
+
+    // 验证图片文件
+    const validation = await validateImageFile(file, userEmail);
+    if (!validation.valid) {
+      return { success: false, error: validation.error };
+    }
+
+    // 检查用户配额
+    const quotaCheck = await checkImageQuota(userEmail);
+    if (!quotaCheck.hasQuota) {
+      return {
+        success: false,
+        error: quotaCheck.reason || '配额不足'
+      };
+    }
+
+    // 上传到七牛云
+    const result = await qiniuService.uploadFile(file, fileName);
+
+    if (result.success) {
+      // 更新使用量统计
+      await updateImageUsageStats(userEmail);
+
+      return {
+        ...result,
+        provider: 'qiniu'
+      };
+    }
+
+    return result;
+
+  } catch (error) {
+    console.error('七牛云上传失败:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '上传失败',
+      provider: 'qiniu'
+    };
+  }
+}
+
+/**
+ * 智能上传图片 - 根据配置选择存储提供商
+ */
+export async function uploadImage(
+  file: File | Blob,
+  fileName: string,
+  userEmail: string,
+  preferredProvider?: StorageProvider
+): Promise<ImageUploadResult> {
+  const provider = preferredProvider || (process.env.IMAGE_STORAGE_PROVIDER as StorageProvider) || 'auto';
+
+  console.log(`📤 开始上传图片，提供商策略: ${provider}`);
+
+  switch (provider) {
+    case 'r2':
+      return await uploadImageToR2(file, fileName, userEmail);
+
+    case 'qiniu':
+      return await uploadImageToQiniu(file, fileName, userEmail);
+
+    case 'auto':
+    default:
+      // 自动模式：优先使用R2，失败时回退到七牛云
+      console.log('🔄 尝试使用 R2 上传...');
+      const r2Result = await uploadImageToR2(file, fileName, userEmail);
+
+      if (r2Result.success) {
+        console.log('✅ R2 上传成功');
+        return r2Result;
+      }
+
+      console.log('❌ R2 上传失败，回退到七牛云:', r2Result.error);
+
+      if (qiniuService) {
+        console.log('🔄 尝试使用七牛云上传...');
+        const qiniuResult = await uploadImageToQiniu(file, fileName, userEmail);
+
+        if (qiniuResult.success) {
+          console.log('✅ 七牛云上传成功');
+          return qiniuResult;
+        }
+
+        console.log('❌ 七牛云上传也失败:', qiniuResult.error);
+        return {
+          success: false,
+          error: `所有存储服务都失败 - R2: ${r2Result.error}, 七牛云: ${qiniuResult.error}`,
+          provider: 'auto'
+        };
+      } else {
+        return {
+          ...r2Result,
+          error: `R2上传失败且七牛云未配置: ${r2Result.error}`
+        };
+      }
+  }
+}
+
+/**
+ * 从URL下载图片并智能上传
  */
 export async function uploadImageFromUrl(
   imageUrl: string,
-  userEmail: string
+  userEmail: string,
+  preferredProvider?: StorageProvider
 ): Promise<ImageUploadResult> {
   try {
     // 下载图片
@@ -315,8 +435,8 @@ export async function uploadImageFromUrl(
       finalFileName += '.jpg';
     }
 
-    // 上传到R2
-    return await uploadImageToR2(imageBlob, finalFileName, userEmail);
+    // 使用智能上传
+    return await uploadImage(imageBlob, finalFileName, userEmail, preferredProvider);
 
   } catch (error) {
     console.error('从URL上传图片失败:', error);
