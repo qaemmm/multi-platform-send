@@ -10,9 +10,60 @@ const isServer = typeof window === 'undefined';
 async function loadQiniuSDK() {
   if (!qiniu && isServer) {
     try {
-      qiniu = await import('qiniu');
+      // 尝试多种方式加载七牛云SDK
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔧 尝试加载七牛云SDK...');
+      }
+
+      // 方法1: 动态导入
+      try {
+        const qiniuModule = await import('qiniu');
+        qiniu = qiniuModule.default || qiniuModule;
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Qiniu SDK loaded via dynamic import');
+        }
+        return qiniu;
+      } catch (dynamicImportError) {
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Dynamic import failed:', dynamicImportError);
+        }
+      }
+
+      // 方法2: 使用eval require (仅在服务端)
+      try {
+        if (typeof eval === 'function' && typeof eval('require') === 'function') {
+          qiniu = eval('require')('qiniu');
+          if (process.env.NODE_ENV === 'development') {
+            console.log('✅ Qiniu SDK loaded via eval require');
+          }
+          return qiniu;
+        }
+      } catch (evalRequireError) {
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Eval require failed:', evalRequireError);
+        }
+      }
+
+      // 方法3: 使用global.require (Node.js环境)
+      try {
+        if (typeof global !== 'undefined' && global.require) {
+          qiniu = global.require('qiniu');
+          if (process.env.NODE_ENV === 'development') {
+            console.log('✅ Qiniu SDK loaded via global.require');
+          }
+          return qiniu;
+        }
+      } catch (globalRequireError) {
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Global require failed:', globalRequireError);
+        }
+      }
+
+      console.error('❌ All attempts to load Qiniu SDK failed');
+      return null;
+
     } catch (error) {
-      console.error('Failed to load Qiniu SDK:', error);
+      console.error('❌ Failed to load Qiniu SDK:', error);
       return null;
     }
   }
@@ -56,17 +107,32 @@ export class QiniuStorageService {
   private async initQiniu() {
     if (this.qiniuInstance) return this.qiniuInstance;
 
+    console.log('🔧 初始化七牛云SDK...');
+    console.log('📋 配置信息:', {
+      accessKey: this.config.accessKey?.substring(0, 8) + '...',
+      bucket: this.config.bucket,
+      domain: this.config.domain,
+      zone: this.config.zone
+    });
+
     const qiniuSDK = await loadQiniuSDK();
     if (!qiniuSDK) {
       throw new Error('Failed to load Qiniu SDK');
     }
 
     this.qiniuInstance = qiniuSDK;
-    this.mac = new qiniuSDK.auth.digest.Mac(this.config.accessKey, this.config.secretKey);
-    this.putPolicy = new qiniuSDK.rs.PutPolicy({
-      scope: this.config.bucket,
-      expires: 7200, // 2小时过期
-    });
+
+    try {
+      this.mac = new qiniuSDK.auth.digest.Mac(this.config.accessKey, this.config.secretKey);
+      this.putPolicy = new qiniuSDK.rs.PutPolicy({
+        scope: this.config.bucket,
+        expires: 7200, // 2小时过期
+      });
+      console.log('✅ 七牛云SDK初始化成功');
+    } catch (initError) {
+      console.error('❌ 七牛云SDK初始化失败:', initError);
+      throw initError;
+    }
 
     return this.qiniuInstance;
   }
@@ -319,11 +385,21 @@ export function createQiniuStorageService(): QiniuStorageService | null {
   const domain = process.env.QINIU_DOMAIN;
   const zone = process.env.QINIU_ZONE as QiniuConfig['zone'] || 'Zone_z0';
 
+  console.log('🔧 检查七牛云配置...');
+  console.log('📋 环境变量状态:', {
+    accessKey: accessKey ? '✅ 已设置' : '❌ 未设置',
+    secretKey: secretKey ? '✅ 已设置' : '❌ 未设置',
+    bucket: bucket ? '✅ 已设置' : '❌ 未设置',
+    domain: domain ? '✅ 已设置' : '❌ 未设置',
+    zone: zone
+  });
+
   if (!accessKey || !secretKey || !bucket || !domain) {
-    console.warn('七牛云配置不完整，跳过七牛云服务初始化');
+    console.warn('❌ 七牛云配置不完整，跳过七牛云服务初始化');
     return null;
   }
 
+  console.log('✅ 七牛云配置完整，创建服务实例');
   return new QiniuStorageService({
     accessKey,
     secretKey,
