@@ -384,8 +384,8 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* 升级提示 - 只在达到限制时显示 */}
-        {!isPro && totalArticles > 0 && (
+        {/* 升级提示 - 只在免费用户达到限制时显示 */}
+        {!isPro && articleLimit > 0 && totalArticles >= articleLimit && (
           <div className="mt-8">
             <UpgradePrompt scenario="dashboard-upgrade" />
           </div>

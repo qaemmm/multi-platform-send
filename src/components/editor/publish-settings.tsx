@@ -27,22 +27,26 @@ export function PublishSettings({ platform, onApplySettings }: PublishSettingsPr
 
   // 获取平台图标
   const getPlatformIcon = (platform: Platform) => {
-    const icons = {
+    const icons: Record<Platform, string> = {
       wechat: '📱',
       zhihu: '🔵',
       juejin: '⚡',
-      zsxq: '🌟'
+      zsxq: '🌟',
+      csdn: '💻',
+      xiaohongshu: '📸'
     };
     return icons[platform] || '📄';
   };
 
   // 获取平台名称
   const getPlatformName = (platform: Platform) => {
-    const names = {
+    const names: Record<Platform, string> = {
       wechat: '公众号',
       zhihu: '知乎',
       juejin: '掘金',
-      zsxq: '知识星球'
+      zsxq: '知识星球',
+      csdn: 'CSDN',
+      xiaohongshu: '小红书'
     };
     return names[platform] || platform;
   };

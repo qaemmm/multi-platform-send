@@ -11,8 +11,28 @@
   console.log('🌐 字流网站端检测脚本已加载');
   console.log('📍 当前页面URL:', window.location.href);
   console.log('📍 当前页面域名:', window.location.origin);
+
+  // 获取插件版本，使用备用方案
+  const getExtensionVersion = () => {
+    // 方案1: 从ZiliuConstants获取
+    if (window.ZiliuConstants?.VERSION) {
+      return window.ZiliuConstants.VERSION;
+    }
+    // 方案2: 从manifest获取（备用）
+    if (typeof chrome !== 'undefined' && chrome?.runtime?.getManifest) {
+      try {
+        return chrome.runtime.getManifest().version;
+      } catch (e) {
+        console.warn('无法从manifest获取版本:', e);
+      }
+    }
+    // 方案3: 返回默认版本
+    return '1.1.0';
+  };
+
+  const extensionVersion = getExtensionVersion();
   console.log('🔧 ZiliuConstants是否可用:', !!window.ZiliuConstants);
-  console.log('📦 插件版本:', window.ZiliuConstants?.VERSION || '未知');
+  console.log('📦 插件版本:', extensionVersion);
 
   // 监听来自网页的插件检测消息
   window.addEventListener('message', (event) => {
@@ -46,12 +66,12 @@
       lastDetectRespondAt = now;
 
       console.log('🎯 网站端收到插件检测请求');
-      console.log('📦 扩展版本:', window.ZiliuConstants?.VERSION || '1.0.0');
+      console.log('📦 扩展版本:', extensionVersion);
 
       // 响应插件检测
       const response = {
         type: 'ZILIU_EXTENSION_RESPONSE',
-        version: window.ZiliuConstants?.VERSION || '1.0.0',
+        version: extensionVersion,
         installed: true,
         source: 'ziliu-extension',
         timestamp: now
@@ -70,11 +90,11 @@
     }
   });
 
-  // 主动告知网站插件已就绪
-  setTimeout(() => {
+  // 主动告知网站插件已就绪（多次发送以确保收到）
+  const sendReadySignal = () => {
     const readyMessage = {
       type: 'ZILIU_EXTENSION_READY',
-      version: window.ZiliuConstants?.VERSION || '1.0.0',
+      version: extensionVersion,
       installed: true,
       source: 'ziliu-extension',
       timestamp: Date.now()
@@ -86,7 +106,13 @@
     } catch (error) {
       console.error('❌ 发送就绪信号失败:', error);
     }
-  }, 200);
+  };
+
+  // 多次发送就绪信号,确保页面能接收到
+  setTimeout(sendReadySignal, 200);
+  setTimeout(sendReadySignal, 500);
+  setTimeout(sendReadySignal, 1000);
+  setTimeout(sendReadySignal, 2000);
 
   // 页面卸载时清理
   window.addEventListener('beforeunload', () => {

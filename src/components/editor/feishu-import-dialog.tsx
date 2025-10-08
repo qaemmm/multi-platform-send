@@ -322,7 +322,7 @@ export function FeishuImportDialog({
                       <div className="flex items-center gap-2 mt-2">
                         <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
                         <span className="text-xs text-green-600">
-                          正在上传图片到云存储...
+                          正在转换图片为本地存储...
                         </span>
                       </div>
                     )}
@@ -331,7 +331,7 @@ export function FeishuImportDialog({
 
                 {/* 处理提示 */}
                 <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded border-l-2 border-gray-300">
-                  💡 由于需要处理图片上传，首次导入可能需要稍长时间，请保持页面不要关闭
+                  💡 由于需要处理图片转换，首次导入可能需要稍长时间，请保持页面不要关闭
                 </div>
               </div>
             )}

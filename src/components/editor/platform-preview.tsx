@@ -220,10 +220,14 @@ export function PlatformPreview({ title, content }: PlatformPreviewProps) {
       // 复制到剪贴板并打开平台页面
       try {
         await navigator.clipboard.writeText(contentToCopy);
-        window.open(platformUrl, '_blank');
+        if (typeof window !== 'undefined') {
+          window.open(platformUrl, '_blank');
+        }
       } catch (error) {
         console.error('复制失败:', error);
-        window.open(platformUrl, '_blank');
+        if (typeof window !== 'undefined') {
+          window.open(platformUrl, '_blank');
+        }
       }
     } catch (error) {
       console.error('发布失败:', error);

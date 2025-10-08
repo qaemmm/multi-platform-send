@@ -33,9 +33,11 @@ export function MultiPlatformEditor({
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToast({ visible: true, message, type });
-    window.setTimeout(() => {
-      setToast((prev) => ({ ...prev, visible: false }));
-    }, 3000);
+    if (typeof window !== 'undefined') {
+      window.setTimeout(() => {
+        setToast((prev) => ({ ...prev, visible: false }));
+      }, 3000);
+    }
   };
 
 
@@ -156,6 +158,12 @@ export function MultiPlatformEditor({
     const items = Array.from(clipboardData.items);
     const imageItems = items.filter(item => item.type.startsWith('image/'));
 
+    console.log('🎯 粘贴事件触发');
+    console.log('📋 剪贴板项目:', items.map(i => ({ type: i.type, kind: i.kind })));
+    console.log('🖼️ 图片项目数量:', imageItems.length);
+    console.log('📄 HTML内容长度:', htmlContent?.length || 0);
+    console.log('📝 文本内容长度:', textContent?.length || 0);
+
     // 优先处理飞书HTML内容
     if (htmlContent && isFeishuContent(htmlContent)) {
       e.preventDefault();
@@ -195,19 +203,27 @@ export function MultiPlatformEditor({
 
     // 处理图片粘贴
     if (imageItems.length > 0) {
+      console.log('✅ 检测到图片，开始上传流程');
       e.preventDefault();
+
+      showToast(`正在上传 ${imageItems.length} 张图片...`, 'info');
 
       // 使用统一的图片上传服务
       const results = await imageUploadService.uploadFromPaste(e.nativeEvent, {
         onSuccess: (result) => {
+          console.log('✅ 图片上传成功:', result.data?.fileName);
           if (result.data) {
             handleImageUpload(result.data.url, result.data.fileName);
+            showToast(`图片 ${result.data.fileName} 上传成功`, 'success');
           }
         },
         onError: (error, upgradeRequired) => {
+          console.error('❌ 图片上传失败:', error);
           handleImageUploadError(error, upgradeRequired);
         }
       });
+
+      console.log('📊 上传结果:', results);
 
       // 处理批量结果
       results.forEach(result => {
@@ -217,6 +233,8 @@ export function MultiPlatformEditor({
           handleImageUploadError(result.error || '上传失败', result.upgradeRequired);
         }
       });
+    } else {
+      console.log('ℹ️ 没有检测到图片，使用默认粘贴行为');
     }
   }, [handleImageUpload, handleImageUploadError, onContentChange, imageUploadService]);
 

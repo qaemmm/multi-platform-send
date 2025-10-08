@@ -44,6 +44,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.log('🔍 飞书导入API调用 - 用户邮箱:', session.user?.email);
+
     const { content } = await request.json();
 
     if (!content) {
@@ -53,7 +55,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 解析飞书内容，包括图片上传处理（会在内部做降级处理）
+    // 解析飞书内容，使用本地存储方案
     const result = await parseFeishuContent(content, session);
 
     return NextResponse.json({
@@ -67,7 +69,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('解析飞书内容失败:', error);
     return NextResponse.json(
-      { success: false, error: '解析失败' },
+      { success: false, error: '解析失败，请重试' },
       { status: 500 }
     );
   }
@@ -93,45 +95,27 @@ async function parseFeishuContent(htmlContent: string, session: any): Promise<{
   };
 }
 
-// 处理HTML中的图片，上传到图床并替换URL
+// 处理HTML中的图片，上传到云存储
 async function processImagesInHtml(html: string, session: any): Promise<{
   processedHtml: string;
   warning?: string;
   totalImages?: number;
   processedImages?: number;
 }> {
-  // 检查用户图片权限
-  let hasImageQuota = true;
-  let quotaWarning = '';
-  
-  if (!session?.user?.email) {
-    hasImageQuota = false;
-    quotaWarning = '用户未登录，飞书图片将保留原始链接';
-  } else {
-    try {
-      // 使用公共服务检查用户配额
-      const quotaCheck = await checkImageQuota(session.user.email);
-      hasImageQuota = quotaCheck.hasQuota;
-      
-      if (!hasImageQuota) {
-        quotaWarning = quotaCheck.reason || '当月图片额度不足，飞书图片将保留原始链接';
-      }
-    } catch (error) {
-      console.error('检查图片配额失败:', error);
-      // 如果检查失败，为了用户体验，先允许尝试上传，让具体上传时再处理错误
-      hasImageQuota = true;
-    }
-  }
+  // 检查图片配额
+  const quotaCheck = await checkImageQuota(session.user.email);
+  let hasImageQuota = quotaCheck.hasQuota;
+  let quotaWarning = quotaCheck.warning || '';
 
   // 使用正则表达式匹配所有img标签，并提取src属性
   const imgRegex = /<img[^>]*>/g;
   let processedHtml = html;
   const imgTags = Array.from(html.matchAll(imgRegex));
-  
+
   // 如果没有图片需要处理，直接返回
   if (imgTags.length === 0) {
-    return { 
-      processedHtml, 
+    return {
+      processedHtml,
       warning: quotaWarning || undefined,
       totalImages: 0,
       processedImages: 0
@@ -151,10 +135,11 @@ async function processImagesInHtml(html: string, session: any): Promise<{
     if (!srcMatch) return;
 
     const originalSrc = srcMatch[1];
-    
+
     // 跳过已经是base64或本地URL的图片
-    if (originalSrc.startsWith('data:') || originalSrc.startsWith('/') || 
-        originalSrc.includes(process.env.R2_PUBLIC_URL || '')) {
+    if (originalSrc.startsWith('data:') || originalSrc.startsWith('/') ||
+        originalSrc.includes(process.env.R2_PUBLIC_URL || '') ||
+        originalSrc.includes(process.env.QINIU_DOMAIN || '')) {
       return;
     }
 
@@ -163,105 +148,75 @@ async function processImagesInHtml(html: string, session: any): Promise<{
 
   // 如果没有需要处理的图片，直接返回
   if (imagesToProcess.length === 0) {
-    return { 
-      processedHtml, 
+    return {
+      processedHtml,
       warning: quotaWarning || undefined,
       totalImages: imgTags.length,
       processedImages: 0
     };
   }
 
-  // 如果没有图片额度，直接返回不处理
-  if (!hasImageQuota) {
-    return { 
-      processedHtml, 
-      warning: quotaWarning || `${imagesToProcess.length} 张图片保留原始链接（额度不足）`,
-      totalImages: imagesToProcess.length,
-      processedImages: 0
-    };
-  }
-
-  let uploadedCount = 0;
+  let convertedCount = 0;
   let failedCount = 0;
 
-  console.log(`开始并行处理 ${imagesToProcess.length} 张图片`);
-  
-  // 并行处理所有图片，设置合理的并发数限制
-  const concurrencyLimit = 3; // 限制并发数为3，避免过多并发请求
-  const results = await processImagesInBatches(imagesToProcess, concurrencyLimit, session.user.email);
+  console.log(`🚀 开始处理 ${imagesToProcess.length} 张图片，上传到云存储`);
 
-  // 应用处理结果
-  results.forEach(({ imageInfo, uploadResult }) => {
-    if (uploadResult.success && uploadResult.url) {
-      processedHtml = processedHtml.replace(
-        imageInfo.fullImgTag, 
-        imageInfo.fullImgTag.replace(imageInfo.originalSrc, uploadResult.url)
+  // 逐个处理图片
+  for (const imageInfo of imagesToProcess) {
+    // 检查是否还有配额
+    if (!hasImageQuota) {
+      console.warn('⚠️ 图片配额已用完，剩余图片保留原始链接');
+      failedCount += imagesToProcess.length - convertedCount;
+      break;
+    }
+
+    try {
+      console.log('📤 上传图片到云存储:', imageInfo.originalSrc);
+
+      const uploadResult = await uploadImageFromUrl(
+        imageInfo.originalSrc,
+        session.user.email
       );
-      console.log('图片上传成功:', imageInfo.originalSrc, '->', uploadResult.url);
-      uploadedCount++;
-    } else {
-      console.warn('图片上传失败，保留原始URL:', imageInfo.originalSrc, uploadResult.error);
+
+      if (uploadResult.success && uploadResult.url) {
+        processedHtml = processedHtml.replace(
+          imageInfo.fullImgTag,
+          imageInfo.fullImgTag.replace(imageInfo.originalSrc, uploadResult.url)
+        );
+        console.log('✅ 图片上传成功:', imageInfo.originalSrc, '→', uploadResult.url);
+        convertedCount++;
+      } else {
+        console.warn('⚠️ 图片上传失败，保留原始URL:', imageInfo.originalSrc, uploadResult.error);
+        failedCount++;
+
+        // 如果是配额问题，停止后续上传
+        if (uploadResult.error?.includes('配额') || uploadResult.error?.includes('限制')) {
+          hasImageQuota = false;
+          quotaWarning = uploadResult.error;
+        }
+      }
+    } catch (error) {
+      console.error('❌ 处理图片失败:', imageInfo.originalSrc, error);
       failedCount++;
     }
-  });
+  }
 
   // 生成警告消息
   let warning = quotaWarning;
-  if (failedCount > 0 && uploadedCount > 0) {
-    warning = warning || `成功上传 ${uploadedCount} 张图片，${failedCount} 张图片保留原始链接`;
+  if (failedCount > 0 && convertedCount > 0) {
+    warning = warning || `成功上传 ${convertedCount} 张图片，${failedCount} 张图片保留原始链接`;
   } else if (failedCount > 0) {
     warning = warning || `${failedCount} 张图片保留原始链接（上传失败）`;
-  } else if (uploadedCount > 0) {
-    warning = warning || `成功上传 ${uploadedCount} 张图片`;
+  } else if (convertedCount > 0) {
+    warning = warning || `成功上传 ${convertedCount} 张图片到云存储`;
   }
 
-  return { 
-    processedHtml, 
+  return {
+    processedHtml,
     warning: warning || undefined,
     totalImages: imagesToProcess.length,
-    processedImages: uploadedCount
+    processedImages: convertedCount
   };
-}
-
-// 分批并行处理图片
-async function processImagesInBatches(
-  imagesToProcess: Array<{
-    fullImgTag: string;
-    originalSrc: string;
-    index: number;
-  }>,
-  concurrencyLimit: number,
-  userEmail: string
-) {
-  const results: Array<{
-    imageInfo: typeof imagesToProcess[0];
-    uploadResult: any;
-  }> = [];
-
-  // 分批处理
-  for (let i = 0; i < imagesToProcess.length; i += concurrencyLimit) {
-    const batch = imagesToProcess.slice(i, i + concurrencyLimit);
-    
-    const batchPromises = batch.map(async (imageInfo) => {
-      try {
-        console.log('处理图片:', imageInfo.originalSrc);
-        const uploadResult = await uploadImageFromUrl(imageInfo.originalSrc, userEmail);
-        return { imageInfo, uploadResult };
-      } catch (error) {
-        console.error('处理图片失败:', imageInfo.originalSrc, error);
-        return { 
-          imageInfo, 
-          uploadResult: { success: false, error: error instanceof Error ? error.message : '处理失败' }
-        };
-      }
-    });
-
-    // 等待当前批次完成
-    const batchResults = await Promise.all(batchPromises);
-    results.push(...batchResults);
-  }
-
-  return results;
 }
 
 // 使用 turndown 库的转换函数，针对飞书特殊结构进行优化

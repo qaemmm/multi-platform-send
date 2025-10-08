@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import { useSession } from 'next-auth/react';
+import { FEATURES, UPGRADE_PROMPTS } from '../config/features';
 
 export interface UserPlan {
   plan: 'free' | 'pro';
@@ -120,7 +121,6 @@ export function UserPlanProvider({ children }: { children: React.ReactNode }) {
 
   // 检查是否有某个功能权限
   const hasFeature = useCallback((featureId: string) => {
-    const { FEATURES } = require('../config/features');
     const feature = FEATURES[featureId];
     
     if (!feature) return false;
@@ -135,7 +135,6 @@ export function UserPlanProvider({ children }: { children: React.ReactNode }) {
 
   // 获取功能限制数量
   const getFeatureLimit = useCallback((featureId: string) => {
-    const { FEATURES } = require('../config/features');
     const feature = FEATURES[featureId];
     
     if (!feature || !feature.limits) return 0;
@@ -145,14 +144,13 @@ export function UserPlanProvider({ children }: { children: React.ReactNode }) {
 
   // 统一的功能权限检查
   const checkFeatureAccess = useCallback((featureId: string): FeatureAccessResult => {
-    const { FEATURES, UPGRADE_PROMPTS } = require('../config/features');
     const feature = FEATURES[featureId];
     
     if (!feature) {
       return { hasAccess: false, reason: '功能不存在' };
     }
 
-    // 如果已经是专业版，检查是否过期
+    // 如果已经是专业版且未过期，直接允许访问
     if (isPro) {
       return { hasAccess: true };
     }
@@ -189,7 +187,7 @@ export function UserPlanProvider({ children }: { children: React.ReactNode }) {
     }
 
     // 专业版功能，免费版用户无权限
-    const upgradePrompt = Object.keys(UPGRADE_PROMPTS).find(key => 
+    const upgradePrompt = Object.keys(UPGRADE_PROMPTS).find(key =>
       UPGRADE_PROMPTS[key].features.includes(featureId)
     ) || 'default';
 

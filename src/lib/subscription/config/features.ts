@@ -99,6 +99,14 @@ export const FEATURES: Record<string, FeatureConfig> = {
       free: 20, // 免费版20张/月
       pro: 500, // 专业版500张/月
     }
+  },
+
+  // 导入功能
+  'feishu-import': {
+    id: 'feishu-import',
+    name: '飞书文档导入',
+    description: '从飞书导入文档内容',
+    plans: ['free', 'pro'] // 所有人都可以使用
   }
 };
 

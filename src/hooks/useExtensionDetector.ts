@@ -37,6 +37,13 @@ export function useExtensionDetector() {
       return;
     }
 
+    // 检查是否在浏览器环境中
+    if (typeof window === 'undefined') {
+      console.log('🔍 跳过插件检测 - 不在浏览器环境中');
+      setIsChecking(false);
+      return;
+    }
+
     console.log('🔍 检测字流插件... (尝试', detectionAttempts + 1, '/', MAX_DETECTION_ATTEMPTS, ')');
     console.log('📍 当前页面域名:', window.location.origin);
 
@@ -63,6 +70,11 @@ export function useExtensionDetector() {
 
     // 监听插件响应
     const handleMessage = (event: MessageEvent) => {
+      // 检查window对象是否存在
+      if (typeof window === 'undefined') {
+        return;
+      }
+
       // 修复：简化消息来源校验，content script使用window.postMessage时origin是当前页面
       if (event.origin !== window.location.origin) {
         return;
@@ -81,21 +93,32 @@ export function useExtensionDetector() {
         });
         setIsChecking(false);
         setHasDetected(true); // 只有成功检测后才标记为已完成
-        window.removeEventListener('message', handleMessage);
+        if (typeof window !== 'undefined') {
+          window.removeEventListener('message', handleMessage);
+        }
       } else if (event.data?.type === 'ZILIU_EXTENSION_READY') {
         console.log('✅ 收到插件就绪信号:', event.data);
       }
     };
 
-    window.addEventListener('message', handleMessage);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('message', handleMessage);
+    }
 
     return () => {
       clearTimeout(timeout);
-      window.removeEventListener('message', handleMessage);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('message', handleMessage);
+      }
     };
   }, [isChecking, isInstalled, detectionAttempts]);
 
   useEffect(() => {
+    // 只在浏览器环境中执行检测
+    if (typeof window === 'undefined') {
+      return;
+    }
+
     // 只在组件挂载时执行一次检测
     const delayedCheck = setTimeout(() => {
       checkExtension();
@@ -106,6 +129,11 @@ export function useExtensionDetector() {
 
   // 添加自动重试机制，但限制重试次数
   useEffect(() => {
+    // 只在浏览器环境中执行自动重试
+    if (typeof window === 'undefined') {
+      return;
+    }
+
     // 只在特定条件下才自动重试
     if (!isInstalled && !isChecking && detectionAttempts < MAX_DETECTION_ATTEMPTS && !hasDetected) {
       const retryInterval = setInterval(() => {
@@ -127,10 +155,12 @@ export function useExtensionDetector() {
     setIsChecking(false);
 
     // 重置后延迟重新检测
-    setTimeout(() => {
-      console.log('🔄 重置后重新开始检测');
-      checkExtension();
-    }, 1000);
+    if (typeof window !== 'undefined') {
+      setTimeout(() => {
+        console.log('🔄 重置后重新开始检测');
+        checkExtension();
+      }, 1000);
+    }
   }, [checkExtension]);
 
   return {
