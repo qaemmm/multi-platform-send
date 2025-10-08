@@ -25,7 +25,7 @@ export async function GET() {
         qiniuStatus = '❌ 初始化失败';
       }
     } catch (error) {
-      qiniuStatus = `❌ 初始化错误: ${error.message}`;
+      qiniuStatus = `❌ 初始化错误: ${error instanceof Error ? error.message : '未知错误'}`;
     }
 
     return NextResponse.json({
@@ -42,7 +42,7 @@ export async function GET() {
   } catch (error) {
     return NextResponse.json({
       success: false,
-      error: error.message,
+      error: error instanceof Error ? error.message : '未知错误',
       timestamp: new Date().toISOString()
     }, { status: 500 });
   }

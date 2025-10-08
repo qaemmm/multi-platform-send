@@ -868,6 +868,34 @@ function getInlineStylesForWechat(styleKey: keyof typeof WECHAT_STYLES) {
       li: `margin: 8px 0; line-height: 1.8; font-family: ${wechatFontFamily};`,
       strong: `font-weight: 600; color: #2c3e50; font-family: ${wechatFontFamily};`,
       em: `font-style: italic; color: #555555; font-family: ${wechatFontFamily};`
+    },
+    warm: {
+      h1: `background: linear-gradient(135deg, #ff9a56 0%, #ff6b35 100%); color: #ffffff; padding: 12px 16px; border-radius: 8px; margin: 24px 0 16px 0; font-size: 24px; font-weight: 600; line-height: 1.4; font-family: ${wechatFontFamily}; display: block; box-shadow: 0 4px 12px rgba(255, 107, 53, 0.2);`,
+      h2: `color: #ff6b35; border-bottom: 3px solid #ff9a56; padding-bottom: 8px; margin: 20px 0 12px 0; font-size: 20px; font-weight: 600; line-height: 1.4; font-family: ${wechatFontFamily}; display: block;`,
+      h3: `color: #ff6b35; margin: 16px 0 8px 0; font-size: 18px; font-weight: 600; line-height: 1.4; font-family: ${wechatFontFamily}; display: block;`,
+      p: `margin: 16px 0; text-align: justify; font-size: 16px; line-height: 1.9; color: #4a4a4a; font-family: ${wechatFontFamily}; word-wrap: break-word; word-break: break-all;`,
+      code: `background: #fff5f0; padding: 3px 8px; border-radius: 4px; font-family: ${wechatCodeFontFamily}; color: #ff6b35; font-size: 14px; border: 1px solid #ffe5d9; white-space: pre-wrap; display: inline;`,
+      pre: `background: #fff5f0; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 16px 0; border-left: 4px solid #ff9a56; box-shadow: 0 2px 8px rgba(255, 154, 86, 0.1); font-family: ${wechatCodeFontFamily}; white-space: pre-wrap; display: block;`,
+      blockquote: `border-left: 4px solid #ff9a56; padding: 14px 16px; margin: 16px 0; color: #666666; background: #fff8f5; border-radius: 6px; position: relative; display: block;`,
+      ul: `margin: 16px 0; padding-left: 24px; list-style-type: disc; font-family: ${wechatFontFamily};`,
+      ol: `margin: 16px 0; padding-left: 24px; list-style-type: decimal; font-family: ${wechatFontFamily};`,
+      li: `margin: 8px 0; padding-left: 4px; line-height: 1.6; font-family: ${wechatFontFamily};`,
+      strong: `font-weight: 600; color: #ff6b35; font-family: ${wechatFontFamily};`,
+      em: `font-style: italic; color: #ff9a56; font-family: ${wechatFontFamily};`
+    },
+    fresh: {
+      h1: `background: linear-gradient(135deg, #00b894 0%, #00cec9 100%); color: #ffffff; padding: 12px 16px; border-radius: 8px; margin: 24px 0 16px 0; font-size: 24px; font-weight: 600; line-height: 1.4; font-family: ${wechatFontFamily}; display: block; box-shadow: 0 4px 12px rgba(0, 184, 148, 0.2);`,
+      h2: `color: #00b894; border-bottom: 3px solid #00cec9; padding-bottom: 8px; margin: 20px 0 12px 0; font-size: 20px; font-weight: 600; line-height: 1.4; font-family: ${wechatFontFamily}; display: block;`,
+      h3: `color: #00b894; margin: 16px 0 8px 0; font-size: 18px; font-weight: 600; line-height: 1.4; font-family: ${wechatFontFamily}; display: block;`,
+      p: `margin: 16px 0; text-align: justify; font-size: 16px; line-height: 1.9; color: #4a4a4a; font-family: ${wechatFontFamily}; word-wrap: break-word; word-break: break-all;`,
+      code: `background: #f0fdf9; padding: 3px 8px; border-radius: 4px; font-family: ${wechatCodeFontFamily}; color: #00b894; font-size: 14px; border: 1px solid #d4f4e8; white-space: pre-wrap; display: inline;`,
+      pre: `background: #f0fdf9; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 16px 0; border-left: 4px solid #00cec9; box-shadow: 0 2px 8px rgba(0, 206, 201, 0.1); font-family: ${wechatCodeFontFamily}; white-space: pre-wrap; display: block;`,
+      blockquote: `border-left: 4px solid #00cec9; padding: 14px 16px; margin: 16px 0; color: #636e72; background: #f5fffe; border-radius: 6px; position: relative; display: block;`,
+      ul: `margin: 16px 0; padding-left: 24px; list-style-type: disc; font-family: ${wechatFontFamily};`,
+      ol: `margin: 16px 0; padding-left: 24px; list-style-type: decimal; font-family: ${wechatFontFamily};`,
+      li: `margin: 8px 0; padding-left: 4px; line-height: 1.6; font-family: ${wechatFontFamily};`,
+      strong: `font-weight: 600; color: #00b894; font-family: ${wechatFontFamily};`,
+      em: `font-style: italic; color: #00cec9; font-family: ${wechatFontFamily};`
     }
   };
 

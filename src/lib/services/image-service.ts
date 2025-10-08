@@ -5,6 +5,7 @@ import { FEATURES } from '../subscription/config/features';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { v4 as uuidv4 } from 'uuid';
 import { createQiniuStorageService, type QiniuUploadResult } from './qiniu-storage';
+import sharp from 'sharp';
 
 // 支持的存储提供商类型
 export type StorageProvider = 'r2' | 'qiniu' | 'auto';
@@ -39,6 +40,7 @@ export interface ImageQuotaResult {
   upgradeRequired?: boolean;
   usedCount?: number;
   totalQuota?: number;
+  warning?: string;
 }
 
 export interface ImageUploadResult {
@@ -208,6 +210,26 @@ export async function updateImageUsageStats(userEmail: string): Promise<void> {
 }
 
 /**
+ * 压缩图片
+ * @param file 原始图片文件
+ * @returns 压缩后的Buffer
+ */
+async function compressImage(file: File | Blob): Promise<Buffer> {
+  const arrayBuffer = await file.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+
+  // 使用sharp压缩图片
+  // 设置质量为80，最大宽度2048px，保持宽高比
+  return await sharp(buffer)
+    .resize(2048, 2048, {
+      fit: 'inside',
+      withoutEnlargement: true
+    })
+    .jpeg({ quality: 80 })
+    .toBuffer();
+}
+
+/**
  * 上传图片到R2存储
  */
 export async function uploadImageToR2(
@@ -242,21 +264,25 @@ export async function uploadImageToR2(
     const uniqueFileName = `${uuidv4()}.${fileExtension}`;
     const filePath = `images/${new Date().getFullYear()}/${new Date().getMonth() + 1}/${uniqueFileName}`;
 
-    // 将文件转换为 Buffer
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    // 压缩图片
+    const compressedBuffer = await compressImage(file);
+    const originalSize = file.size;
+    const compressedSize = compressedBuffer.length;
+    console.log(`图片压缩: ${(originalSize / 1024 / 1024).toFixed(2)}MB -> ${(compressedSize / 1024 / 1024).toFixed(2)}MB (压缩率: ${((1 - compressedSize / originalSize) * 100).toFixed(1)}%)`);
 
     // 上传到 R2
     const uploadCommand = new PutObjectCommand({
       Bucket: process.env.R2_BUCKET_NAME,
       Key: filePath,
-      Body: buffer,
-      ContentType: file.type || 'image/jpeg',
-      ContentLength: buffer.length,
+      Body: compressedBuffer,
+      ContentType: 'image/jpeg',
+      ContentLength: compressedBuffer.length,
       Metadata: {
         'uploaded-by': userEmail,
         'upload-time': new Date().toISOString(),
         'original-name': Buffer.from(fileName, 'utf8').toString('base64'),
+        'original-size': originalSize.toString(),
+        'compressed-size': compressedSize.toString(),
       },
     });
 
@@ -275,8 +301,8 @@ export async function uploadImageToR2(
       success: true,
       url: publicUrl,
       fileName,
-      fileSize: file.size,
-      fileType: file.type || 'image/jpeg',
+      fileSize: compressedSize,
+      fileType: 'image/jpeg',
       uploadPath: filePath,
       provider: 'r2'
     };
@@ -318,8 +344,17 @@ export async function uploadImageToQiniu(
       };
     }
 
+    // 压缩图片
+    const compressedBuffer = await compressImage(file);
+    const originalSize = file.size;
+    const compressedSize = compressedBuffer.length;
+    console.log(`[七牛云]图片压缩: ${(originalSize / 1024 / 1024).toFixed(2)}MB -> ${(compressedSize / 1024 / 1024).toFixed(2)}MB`);
+
+    // 将Buffer转为Blob用于上传
+    const compressedBlob = new Blob([compressedBuffer], { type: 'image/jpeg' });
+
     // 上传到七牛云
-    const result = await qiniuService.uploadFile(file, fileName);
+    const result = await qiniuService.uploadFile(compressedBlob, fileName);
 
     if (result.success) {
       // 更新使用量统计
