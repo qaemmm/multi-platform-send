@@ -21,6 +21,8 @@
     // 使用统一配置检查允许的域名
     const isAllowedOrigin = event.origin === window.location.origin ||
       window.ZiliuConstants?.isAllowedOrigin?.(event.origin) ||
+      event.origin.includes('ziliu.huiouye.online') ||
+      event.origin.includes('www.ziliu.huiouye.online') ||
       event.origin.includes('ziliu.online') ||
       event.origin.includes('www.ziliu.online');
 

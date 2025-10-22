@@ -18,6 +18,8 @@
     "https://mp.csdn.net/*",
     "https://creator.xiaohongshu.com/*",
     "https://wx.zsxq.com/*",
+    "https://ziliu.huiouye.online/*",
+    "https://www.ziliu.huiouye.online/*",
     "https://www.ziliu.online/*",
     "https://ziliu.online/*",
     "http://localhost:3000/*",
@@ -197,6 +199,8 @@
     },
     {
       "matches": [
+        "https://ziliu.huiouye.online/*",
+        "https://www.ziliu.huiouye.online/*",
         "https://www.ziliu.online/*",
         "https://ziliu.online/*",
         "http://localhost:3000/*",

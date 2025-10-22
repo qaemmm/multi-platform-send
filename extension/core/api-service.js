@@ -23,11 +23,11 @@ class ApiService {
   async init() {
     try {
       const result = await chrome.storage.sync.get(['apiBaseUrl']);
-      this.config.baseURL = result.apiBaseUrl || window.ZiliuConstants?.DEFAULT_API_BASE_URL || 'https://ziliu.online';
+      this.config.baseURL = result.apiBaseUrl || window.ZiliuConstants?.DEFAULT_API_BASE_URL || 'https://ziliu.huiouye.online';
       console.log('✅ API服务初始化完成，基础URL:', this.config.baseURL);
     } catch (error) {
       console.error('❌ API服务初始化失败:', error);
-      this.config.baseURL = window.ZiliuConstants?.DEFAULT_API_BASE_URL || 'https://ziliu.online';
+      this.config.baseURL = window.ZiliuConstants?.DEFAULT_API_BASE_URL || 'https://ziliu.huiouye.online';
     }
   }
 

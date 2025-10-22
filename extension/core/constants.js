@@ -3,13 +3,13 @@
  */
 class ZiliuConstants {
   // 环境配置
-  static get PRODUCTION_URL() { return 'https://www.ziliu.online'; }
+  static get PRODUCTION_URL() { return 'https://ziliu.huiouye.online'; }
   static get DEVELOPMENT_URL() { return 'http://localhost:3000'; }
   
   // 根据环境自动选择URL
   static get DEFAULT_API_BASE_URL() {
-    // 开发环境使用本地地址
-    return this.DEVELOPMENT_URL;
+    // 默认指向线上环境，确保发布版本无需额外配置
+    return this.PRODUCTION_URL;
   }
   
   // API端点
@@ -52,6 +52,8 @@ class ZiliuConstants {
   // 允许的域名列表
   static get ALLOWED_ORIGINS() {
     return [
+      'ziliu.huiouye.online',
+      'www.ziliu.huiouye.online',
       'www.ziliu.online',
       'ziliu.online',      // 兼容性保留
       'localhost:3000'     // 开发环境保留

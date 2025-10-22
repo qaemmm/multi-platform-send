@@ -43,6 +43,8 @@
     const isAllowedOrigin = event.origin === window.location.origin ||
       event.origin.includes('localhost:3000') ||
       event.origin.includes('127.0.0.1:3000') ||
+      event.origin.includes('ziliu.huiouye.online') ||
+      event.origin.includes('www.ziliu.huiouye.online') ||
       event.origin.includes('ziliu.online') ||
       event.origin.includes('www.ziliu.online');
 
