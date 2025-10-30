@@ -25,6 +25,16 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+
+  webpack: (config) => {
+    // vm2 在构建时会尝试可选依赖 coffee-script，直接将其指向空模块避免报错
+    config.resolve = config.resolve || {};
+    config.resolve.alias = {
+      ...(config.resolve.alias || {}),
+      'coffee-script': false,
+    };
+    return config;
+  },
 };
 
 export default nextConfig;
