@@ -1,6 +1,6 @@
 /**
- * 新架构 - 配置服务
- * 替代旧的ZiliuConstants，提供统一的配置管理服务
+ * 新架�?- 配置服务
+ * 替代旧的ZiliuConstants，提供统一的配置管理服�?
  */
 class ConfigService {
   constructor() {
@@ -12,7 +12,7 @@ class ConfigService {
       // UI配置
       PANEL_ID: 'ziliu-assistant-panel',
       
-      // 选择器配置
+      // 选择器配�?
       SELECTORS: {
         WECHAT: {
           TITLE_INPUT: '#js_title',
@@ -33,7 +33,7 @@ class ConfigService {
         }
       },
       
-      // 平台配置（动态从插件配置获取）
+      // 平台配置（动态从插件配置获取�?
       PLATFORMS: {},
       
       // API配置
@@ -55,7 +55,7 @@ class ConfigService {
   }
 
   /**
-   * 初始化配置服务
+   * 初始化配置服�?
    */
   async init() {
     if (this.initialized) return;
@@ -63,42 +63,55 @@ class ConfigService {
     try {
       // 从存储中获取API基础URL
       const result = await chrome.storage.sync.get(['apiBaseUrl']);
-      this.config.API_BASE_URL = result.apiBaseUrl || window.ZiliuConstants?.DEFAULT_API_BASE_URL || 'https://www.ziliu.huiouye.online';
+      const fallbackBase = window.ZiliuConstants?.DEFAULT_API_BASE_URL || 'https://ziliu.huiouye.online';
+      let baseUrl = result.apiBaseUrl || fallbackBase;
+
+      // Normalize legacy www domain to avoid cross-origin cookie issues
+      if (baseUrl?.startsWith('https://www.ziliu.huiouye.online')) {
+        baseUrl = `https://ziliu.huiouye.online${baseUrl.slice('https://www.ziliu.huiouye.online'.length)}`;
+        try {
+          await chrome.storage.sync.set({ apiBaseUrl: baseUrl });
+        } catch (storageError) {
+          console.warn('保存修正后的 API 基础 URL 失败:', storageError);
+        }
+      }
+
+      this.config.API_BASE_URL = baseUrl;
       
-      // 从插件配置加载平台配置
+      // 从插件配置加载平台配�?
       this.loadPlatformConfigs();
       
       this.initialized = true;
-      console.log('✅ 配置服务初始化完成，API URL:', this.config.API_BASE_URL);
+      console.log('�?配置服务初始化完成，API URL:', this.config.API_BASE_URL);
       
       // 触发配置加载完成事件
       if (window.ZiliuEventBus) {
         ZiliuEventBus.emit('config:loaded', this.config);
       }
     } catch (error) {
-      console.error('❌ 配置服务初始化失败:', error);
-      this.config.API_BASE_URL = window.ZiliuConstants?.DEFAULT_API_BASE_URL || 'https://www.ziliu.huiouye.online';
+      console.error('�?配置服务初始化失�?', error);
+      this.config.API_BASE_URL = window.ZiliuConstants?.DEFAULT_API_BASE_URL || 'https://ziliu.huiouye.online';
       this.initialized = true;
     }
   }
 
   /**
-   * 从插件配置加载平台配置
+   * 从插件配置加载平台配�?
    */
   loadPlatformConfigs() {
     if (!window.ZiliuPluginConfig || !window.ZiliuPluginConfig.platforms) {
-      console.warn('⚠️ 插件配置未加载，使用空平台配置');
+      console.warn('⚠️ 插件配置未加载，使用空平台配�?);
       return;
     }
 
     window.ZiliuPluginConfig.platforms.forEach(platform => {
       if (platform.enabled) {
-        // 提取主域名
+        // 提取主域�?
         const mainUrl = platform.urlPatterns[0] || '';
         const hostMatch = mainUrl.match(/https?:\/\/([^\/]+)/);
         const host = hostMatch ? hostMatch[1] : '';
 
-        // 转换为旧格式以保持兼容性
+        // 转换为旧格式以保持兼容�?
         this.config.PLATFORMS[platform.id.toUpperCase()] = {
           id: platform.id,
           name: platform.displayName,
@@ -107,11 +120,11 @@ class ConfigService {
       }
     });
 
-    console.log('✅ 平台配置已从插件配置加载:', Object.keys(this.config.PLATFORMS));
+    console.log('�?平台配置已从插件配置加载:', Object.keys(this.config.PLATFORMS));
   }
 
   /**
-   * 获取配置值
+   * 获取配置�?
    */
   get(key, defaultValue = null) {
     const keys = key.split('.');
@@ -129,7 +142,7 @@ class ConfigService {
   }
 
   /**
-   * 设置配置值
+   * 设置配置�?
    */
   set(key, value) {
     const keys = key.split('.');
@@ -166,14 +179,14 @@ class ConfigService {
     
     try {
       await chrome.storage.sync.set({ apiBaseUrl: url });
-      console.log('✅ API基础URL已更新:', url);
+      console.log('�?API基础URL已更�?', url);
       
       // 触发URL变更事件
       if (window.ZiliuEventBus) {
         ZiliuEventBus.emit('config:apiUrlChanged', url);
       }
     } catch (error) {
-      console.error('❌ 保存API基础URL失败:', error);
+      console.error('�?保存API基础URL失败:', error);
       throw error;
     }
   }
@@ -187,7 +200,7 @@ class ConfigService {
   }
 
   /**
-   * 获取平台选择器
+   * 获取平台选择�?
    */
   getPlatformSelectors(platformId) {
     const platformKey = platformId.toUpperCase();
@@ -195,7 +208,7 @@ class ConfigService {
   }
 
   /**
-   * 根据URL检测平台
+   * 根据URL检测平�?
    */
   detectPlatformFromUrl(url) {
     for (const [key, platform] of Object.entries(this.config.PLATFORMS)) {
@@ -207,7 +220,7 @@ class ConfigService {
   }
 
   /**
-   * 获取所有平台配置
+   * 获取所有平台配�?
    */
   getAllPlatforms() {
     return Object.values(this.config.PLATFORMS);
@@ -283,7 +296,7 @@ class ConfigService {
   }
 
   /**
-   * 重置配置为默认值
+   * 重置配置为默认�?
    */
   reset() {
     // 保存当前API URL
@@ -304,7 +317,7 @@ class ConfigService {
   }
 
   /**
-   * 检查配置是否已初始化
+   * 检查配置是否已初始�?
    */
   isInitialized() {
     return this.initialized;
@@ -314,4 +327,4 @@ class ConfigService {
 // 创建全局实例
 window.ZiliuConfigService = new ConfigService();
 
-console.log('✅ 字流配置服务已加载');
+console.log('�?字流配置服务已加�?);

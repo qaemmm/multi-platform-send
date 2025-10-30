@@ -3,7 +3,7 @@
  */
 class ZiliuConstants {
   // 环境配置
-  static get PRODUCTION_URL() { return 'https://www.ziliu.huiouye.online'; }
+  static get PRODUCTION_URL() { return 'https://ziliu.huiouye.online'; }
   static get DEVELOPMENT_URL() { return 'http://localhost:3000'; }
   
   // 根据环境自动选择URL

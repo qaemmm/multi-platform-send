@@ -1,5 +1,5 @@
 /**
- * 新架构 - API服务
+ * 新架�?- API服务
  * 替代旧的ZiliuAPI，提供统一的API调用服务
  */
 class ApiService {
@@ -23,11 +23,24 @@ class ApiService {
   async init() {
     try {
       const result = await chrome.storage.sync.get(['apiBaseUrl']);
-      this.config.baseURL = result.apiBaseUrl || window.ZiliuConstants?.DEFAULT_API_BASE_URL || 'https://www.ziliu.huiouye.online';
-      console.log('✅ API服务初始化完成，基础URL:', this.config.baseURL);
+      const fallbackBase = window.ZiliuConstants?.DEFAULT_API_BASE_URL || 'https://ziliu.huiouye.online';
+      let baseUrl = result.apiBaseUrl || fallbackBase;
+
+      // Normalize legacy www domain to avoid cross-origin cookie issues
+      if (baseUrl?.startsWith('https://www.ziliu.huiouye.online')) {
+        baseUrl = `https://ziliu.huiouye.online${baseUrl.slice('https://www.ziliu.huiouye.online'.length)}`;
+        try {
+          await chrome.storage.sync.set({ apiBaseUrl: baseUrl });
+        } catch (storageError) {
+          console.warn('保存修正后的 API 基础 URL 失败:', storageError);
+        }
+      }
+
+      this.config.baseURL = baseUrl;
+      console.log('�?API服务初始化完成，基础URL:', this.config.baseURL);
     } catch (error) {
-      console.error('❌ API服务初始化失败:', error);
-      this.config.baseURL = window.ZiliuConstants?.DEFAULT_API_BASE_URL || 'https://www.ziliu.huiouye.online';
+      console.error('�?API服务初始化失�?', error);
+      this.config.baseURL = window.ZiliuConstants?.DEFAULT_API_BASE_URL || 'https://ziliu.huiouye.online';
     }
   }
 
@@ -57,17 +70,17 @@ class ApiService {
         }, (response) => {
           console.log(`📨 收到background script响应:`, response);
           if (chrome.runtime.lastError) {
-            console.error(`❌ API请求失败 ${endpoint}:`, chrome.runtime.lastError);
+            console.error(`�?API请求失败 ${endpoint}:`, chrome.runtime.lastError);
             reject(new Error(chrome.runtime.lastError.message));
             return;
           }
 
           if (response && response.success) {
-            console.log(`✅ API请求成功 ${endpoint}`);
+            console.log(`�?API请求成功 ${endpoint}`);
             resolve(response);
           } else {
             const error = response?.error || '请求失败';
-            console.error(`❌ API响应错误 ${endpoint}:`, error);
+            console.error(`�?API响应错误 ${endpoint}:`, error);
             reject(new Error(error));
           }
         });
@@ -76,7 +89,7 @@ class ApiService {
       // 超时处理
       new Promise((_, reject) => 
         setTimeout(() => {
-          console.error(`⏰ API请求超时 ${endpoint} (${timeout}ms)`);
+          console.error(`�?API请求超时 ${endpoint} (${timeout}ms)`);
           reject(new Error(`API请求超时: ${endpoint}`));
         }, timeout)
       )
@@ -270,14 +283,14 @@ class ApiService {
   }
 
   /**
-   * 检查登录状态
+   * 检查登录状�?
    */
   async checkLoginStatus() {
     try {
       const response = await this.makeRequest('/api/auth/check');
       return response.success && response.data?.isLoggedIn;
     } catch (error) {
-      console.warn('检查登录状态失败:', error);
+      console.warn('检查登录状态失�?', error);
       return false;
     }
   }
@@ -287,7 +300,7 @@ class ApiService {
    */
   clearCache() {
     this.cache.clear();
-    console.log('🧹 API缓存已清理');
+    console.log('🧹 API缓存已清�?);
   }
 
   /**
@@ -297,9 +310,9 @@ class ApiService {
     this.config.baseURL = url;
     try {
       await chrome.storage.sync.set({ apiBaseUrl: url });
-      console.log('✅ API基础URL已更新:', url);
+      console.log('�?API基础URL已更�?', url);
     } catch (error) {
-      console.error('❌ 保存API基础URL失败:', error);
+      console.error('�?保存API基础URL失败:', error);
     }
   }
 }
@@ -307,4 +320,4 @@ class ApiService {
 // 创建全局实例
 window.ZiliuApiService = new ApiService();
 
-console.log('✅ 字流API服务已加载');
+console.log('�?字流API服务已加�?);
