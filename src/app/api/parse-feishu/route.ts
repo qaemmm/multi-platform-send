@@ -4,6 +4,49 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { checkImageQuota, uploadImageFromUrl } from '@/lib/services/image-service';
 
+type NormalizedError = Error & {
+  code?: string;
+  response?: {
+    status?: number;
+    data?: unknown;
+  };
+};
+
+function toNormalizedError(error: unknown): NormalizedError {
+  if (error instanceof Error) {
+    return error as NormalizedError;
+  }
+
+  const message =
+    typeof error === 'string'
+      ? error
+      : (() => {
+          try {
+            return JSON.stringify(error);
+          } catch {
+            return 'Unknown error';
+          }
+        })();
+
+  const fallback = new Error(message);
+  if (typeof error === 'object' && error !== null) {
+    const errObj = error as Record<string, unknown>;
+    if (typeof errObj.name === 'string') {
+      fallback.name = errObj.name;
+    }
+    if (typeof errObj.stack === 'string') {
+      fallback.stack = errObj.stack;
+    }
+    if ('code' in errObj && typeof (errObj.code as unknown) === 'string') {
+      (fallback as NormalizedError).code = errObj.code as string;
+    }
+    if ('response' in errObj && typeof errObj.response === 'object') {
+      (fallback as NormalizedError).response = errObj.response as NormalizedError['response'];
+    }
+  }
+
+  return fallback as NormalizedError;
+}
 
 /**
  * 统计HTML中的图片数量（需要上传的）
@@ -74,15 +117,16 @@ export async function POST(request: NextRequest) {
       imageCount: result.imageCount, // 添加图片数量信息
       processedImages: result.processedImages // 添加已处理图片数量
     });
-  } catch (error) {
+  } catch (error: unknown) {
+    const err = toNormalizedError(error);
     console.error('❌ 解析飞书内容失败 - 详细错误:', {
-      message: error.message,
-      stack: error.stack,
-      name: error.name
+      message: err.message,
+      stack: err.stack,
+      name: err.name
     });
 
     // 检查是否是网络相关的错误
-    if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT') {
+    if (err.code === 'ENOTFOUND' || err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT') {
       return NextResponse.json(
         { success: false, error: '网络连接失败，请检查网络后重试' },
         { status: 503 }
@@ -90,7 +134,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { success: false, error: `解析失败: ${error.message}` },
+      { success: false, error: `解析失败: ${err.message}` },
       { status: 500 }
     );
   }
@@ -122,9 +166,10 @@ async function parseFeishuContent(htmlContent: string, session: any): Promise<{
       imageCount: imageResult.totalImages,
       processedImages: imageResult.processedImages
     };
-  } catch (error) {
-    console.error('❌ parseFeishuContent 失败:', error);
-    throw error; // 重新抛出错误，让上层处理
+  } catch (error: unknown) {
+    const err = toNormalizedError(error);
+    console.error('❌ parseFeishuContent 失败:', err);
+    throw err; // 重新抛出错误，让上层处理
   }
 }
 
@@ -240,12 +285,18 @@ async function processImagesInHtml(html: string, session: any): Promise<{
             isQuotaIssue
           };
         }
-      } catch (error) {
-        console.error('❌ 处理图片失败:', imageInfo.originalSrc, error);
+      } catch (error: unknown) {
+        const err = toNormalizedError(error);
+        console.error('❌ 处理图片失败:', imageInfo.originalSrc, err);
+        const isQuotaIssue =
+          err.code === 'QUOTA_EXCEEDED' ||
+          err.code === 'LIMIT_EXCEEDED' ||
+          (err.response?.status === 429);
         return {
           success: false,
           imageInfo,
-          error: error.message
+          error: err.message,
+          isQuotaIssue
         };
       }
     });
@@ -259,6 +310,11 @@ async function processImagesInHtml(html: string, session: any): Promise<{
         if (result.value.success) {
           // 成功：更新HTML
           const { imageInfo, newUrl } = result.value;
+          if (!newUrl) {
+            console.warn('⚠️ 图片上传未返回新地址，保持原链接', imageInfo.originalSrc);
+            failedCount++;
+            continue;
+          }
           processedHtml = processedHtml.replace(
             imageInfo.fullImgTag,
             imageInfo.fullImgTag.replace(imageInfo.originalSrc, newUrl)
@@ -271,7 +327,7 @@ async function processImagesInHtml(html: string, session: any): Promise<{
           // 如果是配额问题，停止后续处理
           if (result.value.isQuotaIssue) {
             hasImageQuota = false;
-            quotaWarning = result.value.error;
+            quotaWarning = result.value.error || quotaWarning;
           }
         }
       } else {
