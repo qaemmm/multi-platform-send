@@ -1,10 +1,23 @@
 // 字流助手 - 后台脚本
 console.log('🚀 字流助手 Background Script 启动');
 
+// 统一加载核心常量，确保 service worker 与内容脚本保持一致
+try {
+  importScripts('core/constants.js');
+  console.log('🔗 已在 Service Worker 中加载 ZiliuConstants');
+} catch (error) {
+  console.warn('⚠️ 无法加载 core/constants.js，将使用兜底配置', error);
+}
+
+// 根据常量配置选择基础 URL，默认指向线上环境
+const DEFAULT_BASE_URL =
+  (typeof ZiliuConstants !== 'undefined' && ZiliuConstants.DEFAULT_API_BASE_URL) ||
+  'https://ziliu.huiouye.online';
+
 // 字流站点配置 - 动态选择环境
 const ZILIU_CONFIG = {
-  // 字流站点基础URL - 开发环境使用本地地址
-  baseUrl: 'http://localhost:3000',
+  // 字流站点基础URL（默认使用线上环境）
+  baseUrl: DEFAULT_BASE_URL,
 
   // 获取完整的API URL
   getApiUrl(path = '') {
