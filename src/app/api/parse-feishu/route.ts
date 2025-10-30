@@ -34,10 +34,13 @@ function countImagesInHtml(html: string): number {
 
 
 export async function POST(request: NextRequest) {
+  console.log('🚀 飞书导入API开始处理请求');
+
   try {
     // 检查用户认证
     const session = await getServerSession(authOptions);
     if (!session) {
+      console.log('❌ 用户认证失败');
       return NextResponse.json(
         { success: false, error: '未授权访问' },
         { status: 401 }
@@ -49,14 +52,19 @@ export async function POST(request: NextRequest) {
     const { content } = await request.json();
 
     if (!content) {
+      console.log('❌ 内容为空');
       return NextResponse.json(
         { success: false, error: '内容不能为空' },
         { status: 400 }
       );
     }
 
+    console.log('📝 开始解析飞书内容，内容长度:', content.length);
+
     // 解析飞书内容，使用本地存储方案
     const result = await parseFeishuContent(content, session);
+
+    console.log('✅ 飞书内容解析完成，图片数量:', result.imageCount, '已处理:', result.processedImages);
 
     return NextResponse.json({
       success: true,
@@ -67,32 +75,57 @@ export async function POST(request: NextRequest) {
       processedImages: result.processedImages // 添加已处理图片数量
     });
   } catch (error) {
-    console.error('解析飞书内容失败:', error);
+    console.error('❌ 解析飞书内容失败 - 详细错误:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
+
+    // 检查是否是网络相关的错误
+    if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT') {
+      return NextResponse.json(
+        { success: false, error: '网络连接失败，请检查网络后重试' },
+        { status: 503 }
+      );
+    }
+
     return NextResponse.json(
-      { success: false, error: '解析失败，请重试' },
+      { success: false, error: `解析失败: ${error.message}` },
       { status: 500 }
     );
   }
 }
 
-async function parseFeishuContent(htmlContent: string, session: any): Promise<{ 
-  title: string; 
-  markdown: string; 
-  imageWarning?: string; 
+async function parseFeishuContent(htmlContent: string, session: any): Promise<{
+  title: string;
+  markdown: string;
+  imageWarning?: string;
   imageCount?: number;
   processedImages?: number;
 }> {
-  // 先处理图片上传，然后转换HTML到Markdown
-  const imageResult = await processImagesInHtml(htmlContent, session);
-  const markdown = convertHtmlToMarkdownWithTurndown(imageResult.processedHtml);
+  console.log('🔄 开始解析飞书内容');
 
-  return { 
-    title: '', 
-    markdown,
-    imageWarning: imageResult.warning,
-    imageCount: imageResult.totalImages,
-    processedImages: imageResult.processedImages
-  };
+  try {
+    // 先处理图片上传，然后转换HTML到Markdown
+    console.log('📸 开始处理图片');
+    const imageResult = await processImagesInHtml(htmlContent, session);
+    console.log('📸 图片处理完成');
+
+    console.log('🔄 开始转换HTML到Markdown');
+    const markdown = convertHtmlToMarkdownWithTurndown(imageResult.processedHtml);
+    console.log('✅ HTML到Markdown转换完成');
+
+    return {
+      title: '',
+      markdown,
+      imageWarning: imageResult.warning,
+      imageCount: imageResult.totalImages,
+      processedImages: imageResult.processedImages
+    };
+  } catch (error) {
+    console.error('❌ parseFeishuContent 失败:', error);
+    throw error; // 重新抛出错误，让上层处理
+  }
 }
 
 // 处理HTML中的图片，上传到云存储
@@ -222,23 +255,29 @@ async function processImagesInHtml(html: string, session: any): Promise<{
 
     // 处理批次结果
     for (const result of chunkResults) {
-      if (result.status === 'fulfilled' && result.value.success) {
-        // 成功：更新HTML
-        const { imageInfo, newUrl } = result.value;
-        processedHtml = processedHtml.replace(
-          imageInfo.fullImgTag,
-          imageInfo.fullImgTag.replace(imageInfo.originalSrc, newUrl)
-        );
-        convertedCount++;
-      } else {
-        // 失败：记录错误
-        failedCount++;
+      if (result.status === 'fulfilled') {
+        if (result.value.success) {
+          // 成功：更新HTML
+          const { imageInfo, newUrl } = result.value;
+          processedHtml = processedHtml.replace(
+            imageInfo.fullImgTag,
+            imageInfo.fullImgTag.replace(imageInfo.originalSrc, newUrl)
+          );
+          convertedCount++;
+        } else {
+          // 失败：记录错误
+          failedCount++;
 
-        if (result.status === 'fulfilled' && result.value.isQuotaIssue) {
-          // 配额问题：停止后续处理
-          hasImageQuota = false;
-          quotaWarning = result.value.error;
+          // 如果是配额问题，停止后续处理
+          if (result.value.isQuotaIssue) {
+            hasImageQuota = false;
+            quotaWarning = result.value.error;
+          }
         }
+      } else {
+        // Promise 被拒绝：记录错误
+        console.error('❌ 图片处理 Promise 被拒绝:', result.reason);
+        failedCount++;
       }
     }
 
