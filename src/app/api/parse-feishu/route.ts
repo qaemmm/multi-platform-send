@@ -159,10 +159,17 @@ async function processImagesInHtml(html: string, session: any): Promise<{
   let convertedCount = 0;
   let failedCount = 0;
 
-  console.log(`🚀 开始处理 ${imagesToProcess.length} 张图片，上传到云存储`);
+  console.log(`🚀 开始并行处理 ${imagesToProcess.length} 张图片，上传到云存储`);
 
-  // 逐个处理图片
-  for (const imageInfo of imagesToProcess) {
+  // 并行处理图片（最多同时处理5张，避免过载）
+  const CONCURRENT_LIMIT = 5;
+  const chunks = [];
+
+  for (let i = 0; i < imagesToProcess.length; i += CONCURRENT_LIMIT) {
+    chunks.push(imagesToProcess.slice(i, i + CONCURRENT_LIMIT));
+  }
+
+  for (const chunk of chunks) {
     // 检查是否还有配额
     if (!hasImageQuota) {
       console.warn('⚠️ 图片配额已用完，剩余图片保留原始链接');
@@ -170,34 +177,74 @@ async function processImagesInHtml(html: string, session: any): Promise<{
       break;
     }
 
-    try {
-      console.log('📤 上传图片到云存储:', imageInfo.originalSrc);
+    // 并行处理当前批次
+    const chunkPromises = chunk.map(async (imageInfo) => {
+      try {
+        console.log('📤 上传图片到云存储:', imageInfo.originalSrc);
 
-      const uploadResult = await uploadImageFromUrl(
-        imageInfo.originalSrc,
-        session.user.email
-      );
+        const uploadResult = await uploadImageFromUrl(
+          imageInfo.originalSrc,
+          session.user.email
+        );
 
-      if (uploadResult.success && uploadResult.url) {
+        if (uploadResult.success && uploadResult.url) {
+          console.log('✅ 图片上传成功:', imageInfo.originalSrc, '→', uploadResult.url);
+          return {
+            success: true,
+            imageInfo,
+            newUrl: uploadResult.url
+          };
+        } else {
+          console.warn('⚠️ 图片上传失败，保留原始URL:', imageInfo.originalSrc, uploadResult.error);
+
+          // 检查是否是配额问题
+          const isQuotaIssue = uploadResult.error?.includes('配额') || uploadResult.error?.includes('限制');
+
+          return {
+            success: false,
+            imageInfo,
+            error: uploadResult.error,
+            isQuotaIssue
+          };
+        }
+      } catch (error) {
+        console.error('❌ 处理图片失败:', imageInfo.originalSrc, error);
+        return {
+          success: false,
+          imageInfo,
+          error: error.message
+        };
+      }
+    });
+
+    // 等待当前批次完成
+    const chunkResults = await Promise.allSettled(chunkPromises);
+
+    // 处理批次结果
+    for (const result of chunkResults) {
+      if (result.status === 'fulfilled' && result.value.success) {
+        // 成功：更新HTML
+        const { imageInfo, newUrl } = result.value;
         processedHtml = processedHtml.replace(
           imageInfo.fullImgTag,
-          imageInfo.fullImgTag.replace(imageInfo.originalSrc, uploadResult.url)
+          imageInfo.fullImgTag.replace(imageInfo.originalSrc, newUrl)
         );
-        console.log('✅ 图片上传成功:', imageInfo.originalSrc, '→', uploadResult.url);
         convertedCount++;
       } else {
-        console.warn('⚠️ 图片上传失败，保留原始URL:', imageInfo.originalSrc, uploadResult.error);
+        // 失败：记录错误
         failedCount++;
 
-        // 如果是配额问题，停止后续上传
-        if (uploadResult.error?.includes('配额') || uploadResult.error?.includes('限制')) {
+        if (result.status === 'fulfilled' && result.value.isQuotaIssue) {
+          // 配额问题：停止后续处理
           hasImageQuota = false;
-          quotaWarning = uploadResult.error;
+          quotaWarning = result.value.error;
         }
       }
-    } catch (error) {
-      console.error('❌ 处理图片失败:', imageInfo.originalSrc, error);
-      failedCount++;
+    }
+
+    // 如果配额用完，停止处理下一批次
+    if (!hasImageQuota) {
+      break;
     }
   }
 
